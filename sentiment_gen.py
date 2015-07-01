@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Authors: Luis Rei <luis.rei@ijs.si>
 # License: MIT License
@@ -57,3 +58,6 @@ def main():
 
 
     #@todo remove tmpdir
+
+if __name__ == '__main__':
+    main()
