@@ -24,9 +24,10 @@ from newsfeed_tweets import convert_tweets
 
 def main():
     cmd_name = sys.argv[0]
+    print len(sys.argv)
 
     # usage
-    if len(sys.argv) not in [5, 6]:
+    if len(sys.argv) not in [6, 7]:
         usage = 'Usage:\n\t%{cmd} ' \
                 'lang_code prob_smiley min_langid_prob ' \
                 'tweets_path tweet_news_path [news_feed_path]'
@@ -39,21 +40,28 @@ def main():
     min_langid_prob = float(sys.argv[3])
     tweets_path = sys.argv[4]
     news_tweets_path = sys.argv[5]
-    if len(sys.argv) == 6:
+    if len(sys.argv) == 7:
         newsfeed_path = sys.argv[6]
     else:
         newsfeed_path = None
 
-    #@todo: create tmpdir
+    # create tmpdir 
     tmpdir = './tmp'
+    if not os.path.isdir(tmpdir):
+        os.makedirs(tmpdir)
+        
+
 
     # Read newsfeed pickled tweets
     if newsfeed_path is not None:
         # @todo remove if tweets_path exists
-        convert_tweets(newsfeed_path, tweets_path)
+        convert_tweets(newsfeed_path, tweets_path
+        )
 
     # Filter Based on Language
-
+        
+    
+    
     # Preprocess Text
 
 
