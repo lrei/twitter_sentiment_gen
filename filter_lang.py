@@ -14,7 +14,6 @@ import json
 import gzip
 import multiprocessing
 import Queue
-import langid
 import time
 import itertools
 
@@ -23,9 +22,9 @@ NUM_PROCS = multiprocessing.cpu_count() - 2
 QUEUE_MAX_SIZE = NUM_PROCS * 50
 
 
-def filter_line(tweet_line, lang=u'en', langid_min_prob=0.75):
+def filter_line(tweet_line, lang=u'en'):
     """
-    if langid_min_prob < 0, dont use langid
+    returns tweet if it is in one language (lang)
     """
     try:
         tweet = json.loads(tweet_line)
@@ -46,31 +45,18 @@ def filter_line(tweet_line, lang=u'en', langid_min_prob=0.75):
     # make sure there are no empty tweets
     if not text:
         text = None
-
-    #
-    # Filter based on language using langid
-    #
-    if langid_min_prob >= 0 and text is not None:
-        # Check if identified language is the expected language
-        lid, prob = langid.classify(text)
-        if lid != lang:
-            return None
-
-        # Filter based ong langid minimum probability
-        if prob < langid_min_prob:
-            return None
-
+        
     return text
 
 
-def worker(q, writeq, lang, langid_min_prob):
+def worker(q, writeq, lang):
     while True:
         try:
             entry = q.get(block=False)
         except Queue.Empty:
             break
             
-        tweet = filter_line(entry, lang, langid_min_prob)
+        tweet = filter_line(entry, lang)
         if tweet is not None:
             tweet_string = tweet + u'\n'
             tweet_string = tweet_string.encode('utf-8')
@@ -98,7 +84,7 @@ def writer(q, outfile):
             destination.write(text)
 
 
-def filter_tweets(infile, outfile, langid_min_prob=0.8, lang=u'en'):
+def filter_tweets(infile, outfile, lang=u'en'):
     """
     todo this later
     """ 
@@ -122,8 +108,7 @@ def filter_tweets(infile, outfile, langid_min_prob=0.8, lang=u'en'):
             procs = []
             for i in xrange(NUM_PROCS):
                 proc = multiprocessing.Process(target=worker,
-                                        args=(workq, writeq, lang,
-                                                langid_min_prob))
+                                        args=(workq, writeq, lang))
                 proc.start()
                 procs.append(proc)
 
@@ -144,25 +129,20 @@ def filter_tweets(infile, outfile, langid_min_prob=0.8, lang=u'en'):
 def main():
     '''main'''
     lang_code = u'en'
-    langid_min_prob = 0.8
 
     if len(sys.argv) not in [3, 4]:
-        print(sys.argv[0] + ' input_tweet_file output_tweet_text [lang_code] [langid_min_prob]')
+        print(sys.argv[0] + ' input_tweet_file output_tweet_text [lang_code]')
         sys.exit(0)
 
     infile = sys.argv[1]
     outfile = sys.argv[2]
 
-    if len(sys.argv) >= 4:
+    if len(sys.argv) == 4:
         lang_code = unicode(sys.argv[3])
 
-    if len(sys.argv) == 5:
-        langid_min_prob = unicode(sys.argv[4])
-        
     print('Using %s as language code' % lang_code)
-    print('Using %f langid min probability' % langid_min_prob)
 
-    filter_tweets(infile, outfile, langid_min_prob, lang=lang_code)
+    filter_tweets(infile, outfile, lang=lang_code)
 
 
 if __name__ == '__main__':

@@ -77,9 +77,9 @@ def load_tweets(file_path, open_function=open, dest_path=None):
 
 
 
-def convert_tweets(read_dir, dest_path):
+def convert_tweets(read_dir, dest_path, filename):
     """Recursive read a directory opening all pickle.gz files, loading them
-    and writting the cleartext to a single file (one line per tweet)
+    and writting the cleartext to a single file named filename (one line per tweet)
     """
     
     n_processed = 0
@@ -115,7 +115,7 @@ def convert_tweets(read_dir, dest_path):
     
     list_of_files = [os.path.join(dest_path, x) for x in list_of_files]
     
-    dest_file = os.path.join(dest_path, 'tweets.json.gzip')    
+    dest_file = os.path.join(dest_path, filename) # name of file    
     with open(dest_file, 'wb') as outfile:
         for fname in list_of_files:
             with open(fname, 'rb') as infile:
@@ -126,9 +126,9 @@ def convert_tweets(read_dir, dest_path):
 def main():
     """
     Example usage:
-    assumes NF pickled tweets are in the current dir outputs to tw
+    assumes NF pickled tweets are in the current dir outputs to tweets.json.gz
     """
-    convert_tweets('./', './tweets.txt', './tmpdir')
+    convert_tweets('./', './', '.tweets.json.gz')
 
 
 if __name__ == '__main__':

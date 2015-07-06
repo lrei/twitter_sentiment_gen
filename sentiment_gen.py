@@ -20,7 +20,7 @@ and collected news tweets also in LD-JSON format.
 import sys
 import os
 from newsfeed_tweets import convert_tweets
-
+from filter_lang import filter_tweets
 
 def main():
     cmd_name = sys.argv[0]
@@ -30,7 +30,7 @@ def main():
     if len(sys.argv) not in [6, 7]:
         usage = 'Usage:\n\t%{cmd} ' \
                 'lang_code prob_smiley min_langid_prob ' \
-                'tweets_path tweet_news_path [news_feed_path]'
+                'tweets_file tweet_news_path [news_feed_path]'
         usage.format(cmd=cmd_name)
         print usage
         sys.exit(0)
@@ -38,7 +38,7 @@ def main():
     lang_code = sys.argv[1]
     prob_smiley = float(sys.argv[2])
     min_langid_prob = float(sys.argv[3])
-    tweets_path = sys.argv[4]
+    tweets_file = sys.argv[4]
     news_tweets_path = sys.argv[5]
     if len(sys.argv) == 7:
         newsfeed_path = sys.argv[6]
@@ -55,14 +55,20 @@ def main():
     # Read newsfeed pickled tweets
     if newsfeed_path is not None:
         # @todo remove if tweets_path exists
-        convert_tweets(newsfeed_path, tweets_path
-        )
+        filename = os.path.basename(tweets_file)
+        tweets_path = os.path.dirname(tweets_file)
+        convert_tweets(newsfeed_path, tweets_path, filename)
+
 
     # Filter Based on Language
-        
+    outfile = 'tweets.' + lang_code + '.gz' # name of the file with filtered tweets
+    outfile = os.path.join(tweets_path, outfile) 
+    filter_tweets(tweets_file, outfile, lang=lang_code)
+
     
-    
-    # Preprocess Text
+    # Preprocess Text   
+   
+
 
 
     #@todo remove tmpdir
