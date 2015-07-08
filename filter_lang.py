@@ -35,18 +35,20 @@ def filter_line(tweet_line, lang=u'en'):
     if 'lang' not in tweet or 'text' not in tweet:
         return None
 
+    # make sure there are no empty tweets
+    if not tweet['text']:
+        return None    
+    
     # filter based on language
     if tweet['lang'] != lang:
         return None
         
-     # extract text
-    text = tweet['text']
+     # extract useful properties
+    ntweet = {'text':tweet['text'], 'lang':tweet['lang']}
+    if 'entities' in tweet:
+        ntweet['entities'] = tweet['entities']
 
-    # make sure there are no empty tweets
-    if not text:
-        text = None
-        
-    return text
+    return ntweet
 
 
 def worker(q, writeq, lang):
@@ -58,8 +60,7 @@ def worker(q, writeq, lang):
             
         tweet = filter_line(entry, lang)
         if tweet is not None:
-            tweet_string = tweet + u'\n'
-            tweet_string = tweet_string.encode('utf-8')
+            tweet_string = json.dumps(tweet)  + u'\n'
             writeq.put(tweet_string)
 
 
@@ -77,11 +78,11 @@ def writer(q, outfile):
     with gzip.open(outfile, 'wa') as destination:
          while True:
             try:
-                text = q.get(block=False)
+                tweet = q.get(block=False)
             except Queue.Empty:
                 break
                 
-            destination.write(text)
+            destination.write(tweet)
 
 
 def filter_tweets(infile, outfile, lang=u'en'):
@@ -94,9 +95,7 @@ def filter_tweets(infile, outfile, lang=u'en'):
  
     with gzip.open(infile, 'r') as source:
         for batch in read_in_chunks(source, QUEUE_MAX_SIZE):
-            # add to queue
-            
-            
+            # add to queu      
             [workq.put(entry) for entry in batch]
             
             batch_length = len(batch)
@@ -131,7 +130,7 @@ def main():
     lang_code = u'en'
 
     if len(sys.argv) not in [3, 4]:
-        print(sys.argv[0] + ' input_tweet_file output_tweet_text [lang_code]')
+        print(sys.argv[0] + ' input_tweet_file output_tweet_file [lang_code]')
         sys.exit(0)
 
     infile = sys.argv[1]

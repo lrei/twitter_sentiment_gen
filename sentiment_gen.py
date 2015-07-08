@@ -21,6 +21,8 @@ import sys
 import os
 from newsfeed_tweets import convert_tweets
 from filter_lang import filter_tweets
+import gzip
+from tweet_text import preprocess_tweet_file
 
 def main():
     cmd_name = sys.argv[0]
@@ -46,9 +48,9 @@ def main():
         newsfeed_path = None
 
     # create tmpdir 
-    tmpdir = './tmp'
-    if not os.path.isdir(tmpdir):
-        os.makedirs(tmpdir)
+    #tmpdir = './tmp'
+    #if not os.path.isdir(tmpdir):
+    #    os.makedirs(tmpdir)
         
 
 
@@ -61,13 +63,16 @@ def main():
 
 
     # Filter Based on Language
-    outfile = 'tweets.' + lang_code + '.gz' # name of the file with filtered tweets
+    outfile = 'tweets.' + lang_code + '.json.gz' # name of the file with filtered tweets
     outfile = os.path.join(tweets_path, outfile) 
     filter_tweets(tweets_file, outfile, lang=lang_code)
 
     
-    # Preprocess Text   
-   
+    # Preprocess Text  
+    input_file = outfile 
+    output_file = 'tweets.pp.' + lang_code + '.json.gz' 
+    output_file = os.path.join(tweets_path, output_file) 
+    preprocess_tweet_file(input_file, output_file)
 
 
 

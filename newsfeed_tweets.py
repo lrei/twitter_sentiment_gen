@@ -18,6 +18,7 @@ import json
 from multiprocessing import Pool, cpu_count
 from functools import partial
 import shutil
+import sys
 
 
 def load_tweets(file_path, open_function=open, dest_path=None):
@@ -41,8 +42,8 @@ def load_tweets(file_path, open_function=open, dest_path=None):
             tweets = [x for x in tweets if u'lang' in x and u'text' in x]
 
             # remove other properties for the sake of disk space
-            tweets = [{u'text': t[u'text'], u'lang': t[u'lang']}
-                      for t in tweets]
+            tweets = [{u'text': t[u'text'], u'lang': t[u'lang'], 
+                       u'entities':t[u'entities']} for t in tweets]
 
             # remove newlines, strip from text
             for t in tweets:
@@ -61,7 +62,7 @@ def load_tweets(file_path, open_function=open, dest_path=None):
     
     #write new file
     write_file = os.path.basename(file_path)
-    write_file = write_file.split('.')[0] + '.json.gzip'
+    write_file = write_file.split('.')[0] + '.json.gz'
     write_file = os.path.join(dest_path, write_file)
     
     try:
@@ -124,11 +125,15 @@ def convert_tweets(read_dir, dest_path, filename):
     
 
 def main():
-    """
-    Example usage:
-    assumes NF pickled tweets are in the current dir outputs to tweets.json.gz
-    """
-    convert_tweets('./', './', '.tweets.json.gz')
+    cmd_name = sys.argv[0]
+    if len(sys.argv) not in [3, 4]:
+        usage = 'Usage:\n\t%{cmd} ' \
+                'read_dir dest_path filename'
+        usage.format(cmd=cmd_name)
+        print(usage)
+        sys.exit(0)
+    
+    convert_tweets(sys.argv[1], sys.argv[2], sys.argv[3])
 
 
 if __name__ == '__main__':
