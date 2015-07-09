@@ -21,18 +21,21 @@ import sys
 import os
 from newsfeed_tweets import convert_tweets
 from filter_lang import filter_tweets
-import gzip
 from tweet_text import preprocess_tweet_file
 
 def main():
     cmd_name = sys.argv[0]
-    print len(sys.argv)
+    min_tokens = 10 # default parameters
+    max_num_urls = 1
+    max_num_users = 3 
+    newsfeed_path = None
 
     # usage
-    if len(sys.argv) not in [6, 7]:
+    if len(sys.argv) not in [6, 7, 8, 9, 10]:
         usage = 'Usage:\n\t%{cmd} ' \
                 'lang_code prob_smiley min_langid_prob ' \
-                'tweets_file tweet_news_path [news_feed_path]'
+                'tweets_file tweet_news_path [news_feed_path] [min_tokens]' \
+                '[max_urls] [max_users]'
         usage.format(cmd=cmd_name)
         print usage
         sys.exit(0)
@@ -42,10 +45,14 @@ def main():
     min_langid_prob = float(sys.argv[3])
     tweets_file = sys.argv[4]
     news_tweets_path = sys.argv[5]
-    if len(sys.argv) == 7:
+    if len(sys.argv) >= 7:
         newsfeed_path = sys.argv[6]
-    else:
-        newsfeed_path = None
+    if len(sys.argv) >= 8:
+        min_tokens = sys.argv[7]
+    if len(sys.argv) >= 9:
+        max_num_urls = sys.argv[8]
+    if len(sys.argv) >= 10:
+        max_num_users = sys.argv[9]
 
     # create tmpdir 
     #tmpdir = './tmp'
@@ -72,7 +79,7 @@ def main():
     input_file = outfile 
     output_file = 'tweets.pp.' + lang_code + '.json.gz' 
     output_file = os.path.join(tweets_path, output_file) 
-    preprocess_tweet_file(input_file, output_file)
+    preprocess_tweet_file(input_file, output_file, min_tokens, max_num_urls, max_num_users)
 
 
 
