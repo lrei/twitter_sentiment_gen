@@ -1,5 +1,5 @@
 '''
-Simple tweet text preprocessing module
+Simple tweet text preprocessing module, processes .json.gz files
 '''
 
 from __future__ import print_function
@@ -137,9 +137,10 @@ def replace_entities(tweet):
                     list_of_hashtags_indices) 
     
     
-    # remove property entities, leave id
-    ntweet = {u'text': tweet[u'text'], u'lang': tweet[u'lang']}#, \
-              #u'id':tweet['id_str']}
+    # remove property entities, include id
+    ntweet = {u'text': tweet[u'text'], u'lang': tweet[u'lang']}
+    if 'id' in tweet:
+        ntweet['id'] = tweet['id']
     
     return ntweet      
     
@@ -165,8 +166,6 @@ def preprocess_tweet(min_tokens, max_num_urls, max_num_users, lowercasing, tweet
     if len(tweet['entities']['user_mentions']) > max_num_users:
         return None
 
-
-    #TODO make lowercasing a parameter
     
     # lower
     if lowercasing == 'yes':
@@ -238,13 +237,13 @@ def main():
         sys.exit(0)
     
     if len(sys.argv) >= 4:
-        min_tokens = sys.argv[3]
+        min_tokens = int(sys.argv[3])
         
     if len(sys.argv) >= 5:
-        max_num_urls = sys.argv[4]
+        max_num_urls = int(sys.argv[4])
         
     if len(sys.argv) >= 6:
-        max_num_users = sys.argv[5]
+        max_num_users = int(sys.argv[5])
     
     if len(sys.argv) >= 7:
         lowercasing = sys.argv[6]

@@ -43,7 +43,7 @@ def load_tweets(file_path, open_function=open, dest_path=None):
 
             # remove other properties for the sake of disk space
             tweets = [{u'text': t[u'text'], u'lang': t[u'lang'], 
-                       u'entities':t[u'entities']} for t in tweets]
+                       u'entities':t[u'entities'], u'id':t['id_str']} for t in tweets]
 
             # remove newlines, strip from text
             for t in tweets:

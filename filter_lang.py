@@ -42,11 +42,15 @@ def filter_line(tweet_line, lang=u'en'):
     # filter based on language
     if tweet['lang'] != lang:
         return None
-        
+              
      # extract useful properties
     ntweet = {'text':tweet['text'], 'lang':tweet['lang']}
     if 'entities' in tweet:
         ntweet['entities'] = tweet['entities']
+    if 'id' in tweet:
+        ntweet['id'] = tweet['id']
+
+
 
     return ntweet
 
@@ -75,13 +79,13 @@ def read_in_chunks(file_object, chunk_size=1024):
         
         
 def writer(q, outfile):
-    with gzip.open(outfile, 'wa') as destination:
+    with gzip.open(outfile, 'a') as destination:
          while True:
             try:
                 tweet = q.get(block=False)
             except Queue.Empty:
                 break
-                
+               
             destination.write(tweet)
 
 
@@ -127,21 +131,25 @@ def filter_tweets(infile, outfile, lang=u'en'):
 
 def main():
     '''main'''
-    lang_code = u'en'
+    lang_codes = [u'en']
 
     if len(sys.argv) not in [3, 4]:
-        print(sys.argv[0] + ' input_tweet_file output_tweet_file [lang_code]')
+        print(sys.argv[0] + ' input_tweet_file output1[,output2,...] [lang_code1[,lang_code2,..]]')
         sys.exit(0)
 
     infile = sys.argv[1]
-    outfile = sys.argv[2]
+    outfiles = sys.argv[2].split(',')
 
     if len(sys.argv) == 4:
-        lang_code = unicode(sys.argv[3])
+        lang_codes = unicode(sys.argv[3]).split(',')
+        
+    if not len(outfiles) == len(lang_codes):
+        print('Output files and language codes does not match in size')
+        sys.exit(0)
 
-    print('Using %s as language code' % lang_code)
-
-    filter_tweets(infile, outfile, lang=lang_code)
+    for lang_code, outfile in zip(lang_codes, outfiles):
+        print('Using %s as language code' % lang_code)
+        filter_tweets(infile, outfile, lang=lang_code)
 
 
 if __name__ == '__main__':
