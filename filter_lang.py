@@ -16,6 +16,9 @@ import multiprocessing
 import Queue
 import time
 import itertools
+import argparse
+
+
 
 # MULTIPROCESSING
 NUM_PROCS = multiprocessing.cpu_count() - 2
@@ -50,8 +53,6 @@ def filter_line(tweet_line, lang=u'en'):
     if 'id' in tweet:
         ntweet['id'] = tweet['id']
 
-
-
     return ntweet
 
 
@@ -66,6 +67,7 @@ def worker(q, writeq, lang):
         if tweet is not None:
             tweet_string = json.dumps(tweet)  + u'\n'
             writeq.put(tweet_string)
+    writeq.put(-1)
 
 
 def read_in_chunks(file_object, chunk_size=1024):
@@ -78,15 +80,17 @@ def read_in_chunks(file_object, chunk_size=1024):
         yield data
         
         
-def writer(q, outfile):
+def writer(q, outfile, n_readers):
     with gzip.open(outfile, 'a') as destination:
-         while True:
-            try:
-                tweet = q.get(block=False)
-            except Queue.Empty:
-                break
-               
-            destination.write(tweet)
+        while True:
+            tweet = q.get(block=True)
+            if type(tweet) == int:
+                if tweet == -1:
+                    n_readers = n_readers -1
+                    if n_readers == 0:
+                        break
+            else:
+               destination.write(tweet)
 
 
 def filter_tweets(infile, outfile, lang=u'en'):
@@ -96,10 +100,9 @@ def filter_tweets(infile, outfile, lang=u'en'):
     workq = multiprocessing.Queue()
     writeq = multiprocessing.Queue()
     n_processed = 0
- 
     with gzip.open(infile, 'r') as source:
         for batch in read_in_chunks(source, QUEUE_MAX_SIZE):
-            # add to queu      
+            # add to queue      
             [workq.put(entry) for entry in batch]
             
             batch_length = len(batch)
@@ -115,9 +118,8 @@ def filter_tweets(infile, outfile, lang=u'en'):
                 proc.start()
                 procs.append(proc)
 
-            time.sleep(1)
             proc = multiprocessing.Process(target=writer,
-                                        args=(writeq,outfile))
+                                        args=(writeq,outfile, NUM_PROCS))
             proc.start()
             procs.append(proc)
             # wait for processes to finish
@@ -132,25 +134,30 @@ def filter_tweets(infile, outfile, lang=u'en'):
 def main():
     '''main'''
     lang_codes = [u'en']
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input_tweet_file')
+    parser.add_argument('output_files', help='one or more file_names comma_seperated')
+    parser.add_argument('-l', '--lang_codes', help='language codes comma-seperated')
+    
+    args = parser.parse_args()
+    
 
-    if len(sys.argv) not in [3, 4]:
-        print(sys.argv[0] + ' input_tweet_file output1[,output2,...] [lang_code1[,lang_code2,..]]')
-        sys.exit(0)
+    infile = args.input_tweet_file
+    outfiles = args.output_files.split(',')
 
-    infile = sys.argv[1]
-    outfiles = sys.argv[2].split(',')
-
-    if len(sys.argv) == 4:
-        lang_codes = unicode(sys.argv[3]).split(',')
+    if args.lang_codes:
+        lang_codes = unicode(args.lang_codes).split(',')
         
     if not len(outfiles) == len(lang_codes):
         print('Output files and language codes does not match in size')
         sys.exit(0)
-
+                
+    
     for lang_code, outfile in zip(lang_codes, outfiles):
         print('Using %s as language code' % lang_code)
         filter_tweets(infile, outfile, lang=lang_code)
-
+    
 
 if __name__ == '__main__':
     main()

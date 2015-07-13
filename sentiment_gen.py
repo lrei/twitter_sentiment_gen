@@ -22,40 +22,46 @@ import os
 from newsfeed_tweets import convert_tweets
 from filter_lang import filter_tweets
 from tweet_text import preprocess_tweet_file
+import argparse
 
 def main():
-    cmd_name = sys.argv[0]
     min_tokens = 10 # default parameters
     max_num_urls = 1
     max_num_users = 3 
     newsfeed_path = None
     lowercasing = 'yes'
-
-    # usage
-    if len(sys.argv) not in [6, 7, 8, 9, 10, 11]:
-        usage = 'Usage:\n\t%{cmd} ' \
-                'lang_code1[,lang_code2,...] prob_smiley min_langid_prob ' \
-                'tweets_file tweet_news_path [news_feed_path] [min_tokens]' \
-                '[max_urls] [max_users] [lowercasing(yes/no)]'
-        usage.format(cmd=cmd_name)
-        print usage
-        sys.exit(0)
-
-    lang_codes = sys.argv[1].split(',')
-    prob_smiley = float(sys.argv[2])
-    min_langid_prob = float(sys.argv[3])
-    tweets_file = sys.argv[4]
-    news_tweets_path = sys.argv[5]
-    if len(sys.argv) >= 7:
-        newsfeed_path = sys.argv[6]
-    if len(sys.argv) >= 8:
-        min_tokens = int(sys.argv[7])
-    if len(sys.argv) >= 9:
-        max_num_urls = int(sys.argv[8])
-    if len(sys.argv) >= 10:
-        max_num_users = int(sys.argv[9])
-    if len(sys.argv) >= 11:
-        lowercasing = sys.argv[10]
+    
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument('lang_codes', help='lang codes comma-seperated')
+    parser.add_argument('prob_smiley', type=float)
+    parser.add_argument('min_langid_prob', type=float)
+    parser.add_argument('tweets_file')
+    parser.add_argument('tweet_news_path')
+    parser.add_argument('-p', '--news_feed_path')
+    parser.add_argument('-t', '--min_tokens', type=int)
+    parser.add_argument('-url', '--max_urls', type=int)
+    parser.add_argument('-u', '--max_users', type=int)
+    parser.add_argument('-l', '--lowercasing', type=int, choices=[0,1])
+    
+    args = parser.parse_args()   
+    
+    lang_codes = args.lang_codes.split(',')
+    prob_smiley = args.prob_smiley
+    min_langid_prob = args.min_langid_prob
+    tweets_file = args.tweets_file
+    news_tweets_path = args.tweet_news_path
+    if args.news_feed_path:
+        newsfeed_path = args.news_feed_path
+    if args.min_tokens:
+        min_tokens = args.min_tokens
+    if args.max_urls:
+        max_num_urls = args.max_urls
+    if args.max_users:
+        max_num_users = args.max_users
+    if args.lowercasing:
+        if args.lowercasing == 0:
+            lowercasing = 'no'
 
     # create tmpdir 
     #tmpdir = './tmp'
@@ -63,12 +69,12 @@ def main():
     #    os.makedirs(tmpdir)
         
 
-
+    
     filename = os.path.basename(tweets_file)
     tweets_path = os.path.dirname(tweets_file)
 
     # Read newsfeed pickled tweets
-    if newsfeed_path is not None and newsfeed_path != '-':
+    if newsfeed_path is not None:
         # @todo remove if tweets_path exists
         convert_tweets(newsfeed_path, tweets_path, filename)
 
@@ -88,6 +94,6 @@ def main():
 
 
     #@todo remove tmpdir
-
+    
 if __name__ == '__main__':
     main()

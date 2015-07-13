@@ -9,6 +9,7 @@ import multiprocessing
 import gzip
 import json
 from functools import partial
+import argparse
 
 
 #re_user = re.compile(r'(?<=^|(?<=[^a-zA-Z0-9-_\.]))@([A-Za-z]+[A-Za-z0-9]+)')
@@ -228,29 +229,29 @@ def main():
     max_num_users = 3 
     lowercasing = 'no'
     
-    cmd_name = sys.argv[0]
-    if len(sys.argv) not in [3, 4, 5, 6, 7]:
-        usage = 'Usage:\n\t%{cmd} ' \
-                'infile outfile [min_tokens] [max_urls] [max_users] [lowercasing(yes/no)]'
-        usage.format(cmd=cmd_name)
-        print(usage)
-        sys.exit(0)
-    
-    if len(sys.argv) >= 4:
-        min_tokens = int(sys.argv[3])
+    parser = argparse.ArgumentParser()
+    parser.add_argument('infile')
+    parser.add_argument('outfile')
+    parser.add_argument('-t', '--min_tokens', type=int)
+    parser.add_argument('-url', '--max_urls', type=int)
+    parser.add_argument('-u', '--max_users', type=int)
+    parser.add_argument('-l', --'lowercasing', type=int, choices=[0,1])
+    args = parser.parse_args()
+
+    if args.min_tokens:
+        min_tokens = args.min_tokens
         
-    if len(sys.argv) >= 5:
-        max_num_urls = int(sys.argv[4])
+    if args.max_urls:
+        max_num_urls = args.max_urls
         
-    if len(sys.argv) >= 6:
-        max_num_users = int(sys.argv[5])
+    if args.max_users:
+        max_num_users = args.max_users
     
-    if len(sys.argv) >= 7:
-        lowercasing = sys.argv[6]
+    if args.lowercasing:
+        if args.lowercasing == 1:
+            lowercasing = 'yes'
         
     preprocess_tweet_file(sys.argv[1], sys.argv[2], min_tokens, max_num_urls, max_num_users, lowercasing)
-
-
 
 
 if __name__ == '__main__':
