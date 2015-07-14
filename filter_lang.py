@@ -13,7 +13,6 @@ import sys
 import json
 import gzip
 import multiprocessing
-import Queue
 import time
 import itertools
 import argparse
@@ -22,7 +21,7 @@ import argparse
 
 # MULTIPROCESSING
 NUM_PROCS = multiprocessing.cpu_count() - 2
-QUEUE_MAX_SIZE = NUM_PROCS * 20000
+QUEUE_MAX_SIZE = NUM_PROCS * 200000
 
 
 def filter_line(tweet_line, lang=u'en'):
@@ -58,15 +57,18 @@ def filter_line(tweet_line, lang=u'en'):
 
 def worker(q, writeq, lang):
     while True:
-        try:
-            entry = q.get(block=False)
-        except Queue.Empty:
-            break
-            
+        entry = q.get(block=True)
+        if type(entry) == int:
+            if entry < 0:
+                break
+                
+        # process line
         tweet = filter_line(entry, lang)
         if tweet is not None:
             tweet_string = json.dumps(tweet)  + u'\n'
             writeq.put(tweet_string)
+            
+    # exit
     writeq.put(-1)
 
 
@@ -81,6 +83,8 @@ def read_in_chunks(file_object, chunk_size=1024):
         
         
 def writer(q, outfile, n_readers):
+    start_time = time.time()
+    counter = 0
     with gzip.open(outfile, 'a') as destination:
         while True:
             tweet = q.get(block=True)
@@ -91,43 +95,54 @@ def writer(q, outfile, n_readers):
                         break
             else:
                destination.write(tweet)
+               counter += 1
+               if counter % 2*QUEUE_MAX_SIZE == 0:
+                   end_time = time.time()
+                   processed_per_second = (counter / (end_time - start_time)) / 1000
+                   print('total processed lines = %dk' % (int(counter / 1000),))
+                   print('processed lines per second = %dk' % int(processed_per_second))
+                   
+
+
+def reader(q, infile, n_workers):
+    with gzip.open(infile, 'r') as source:
+        for line in source:
+            # add to queue      
+            q.put(line)
+            
+    for ii in range(n_workers):
+        q.put(-1)
 
 
 def filter_tweets(infile, outfile, lang=u'en'):
     """
     todo this later
     """ 
-    workq = multiprocessing.Queue()
+    workq = multiprocessing.Queue(QUEUE_MAX_SIZE)
     writeq = multiprocessing.Queue()
-    n_processed = 0
-    with gzip.open(infile, 'r') as source:
-        for batch in read_in_chunks(source, QUEUE_MAX_SIZE):
-            # add to queue      
-            [workq.put(entry) for entry in batch]
-            
-            batch_length = len(batch)
-            n_processed += batch_length
-            start_time = time.time()
-            del batch[:]
+    
         
-            # start procs
-            procs = []
-            for i in xrange(NUM_PROCS):
-                proc = multiprocessing.Process(target=worker,
+    # start procs
+    procs = []
+    proc = multiprocessing.Process(target=reader,
+                                    args=(workq, infile, NUM_PROCS))
+    proc.start()
+    procs.append(proc)
+    
+    
+    for i in xrange(NUM_PROCS):
+        proc = multiprocessing.Process(target=worker,
                                         args=(workq, writeq, lang))
-                proc.start()
-                procs.append(proc)
+        proc.start()
+        procs.append(proc)
 
-            proc = multiprocessing.Process(target=writer,
-                                        args=(writeq,outfile, NUM_PROCS))
-            proc.start()
-            procs.append(proc)
-            # wait for processes to finish
-            [proc.join() for proc in procs]
-            end_time = time.time()
-            processed_per_second = (batch_length / (end_time - start_time)) / 1000
-            print('total processed lines = %dk' % int(n_processed / 1000))
-            print('processed lines per second = %dk' % int(processed_per_second))
+    proc = multiprocessing.Process(target=writer,
+                                   args=(writeq,outfile, NUM_PROCS))
+    proc.start()
+    procs.append(proc)
+    # wait for processes to finish
+    [proc.join() for proc in procs]
+        
             
 
 
@@ -153,7 +168,7 @@ def main():
         print('Output files and language codes does not match in size')
         sys.exit(0)
                 
-    
+    print('using %d procs' % NUM_PROCS)
     for lang_code, outfile in zip(lang_codes, outfiles):
         print('Using %s as language code' % lang_code)
         filter_tweets(infile, outfile, lang=lang_code)
