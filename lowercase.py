@@ -1,69 +1,41 @@
-# -*- coding: utf-8 -*-
-# Authors: Luis Rei <me@luisrei.com>
-# License: MIT License
-
-"""
-Reads a Line Delimited JSON file containing tweets.
-Outputs only those with the selected language.
-"""
+'''
+this module lowercases text from infile and writes it to outfile, processes .json.gz files
+'''
 
 from __future__ import print_function
 from __future__ import division
-import sys
 import json
 import gzip
 import multiprocessing
 import Queue
-import time
 import itertools
 import argparse
+from filter_lang import NUM_PROCS, QUEUE_MAX_SIZE
 
 
-
-# MULTIPROCESSING
-NUM_PROCS = multiprocessing.cpu_count() - 2
-QUEUE_MAX_SIZE = NUM_PROCS * 20000
-
-
-def filter_line(tweet_line, lang=u'en'):
+def lower_line(line):
     """
-    returns tweet if it is in one language (lang)
+    returns lowered line
     """
     try:
-        tweet = json.loads(tweet_line)
+        tweet = json.loads(line)
     except:
         return None
+ 
+    # lower
+    tweet['text'] = tweet['text'].lower()
 
-    # sanity check
-    if 'lang' not in tweet or 'text' not in tweet:
-        return None
-
-    # make sure there are no empty tweets
-    if not tweet['text']:
-        return None    
-    
-    # filter based on language
-    if tweet['lang'] != lang:
-        return None
-              
-     # extract useful properties
-    ntweet = {'text':tweet['text'], 'lang':tweet['lang']}
-    if 'entities' in tweet:
-        ntweet['entities'] = tweet['entities']
-    if 'id' in tweet:
-        ntweet['id'] = tweet['id']
-
-    return ntweet
+    return tweet
 
 
-def worker(q, writeq, lang):
+def worker(q, writeq):
     while True:
         try:
             entry = q.get(block=False)
         except Queue.Empty:
             break
             
-        tweet = filter_line(entry, lang)
+        tweet = lower_line(entry)
         if tweet is not None:
             tweet_string = json.dumps(tweet)  + u'\n'
             writeq.put(tweet_string)
@@ -93,7 +65,7 @@ def writer(q, outfile, n_readers):
                destination.write(tweet)
 
 
-def filter_tweets(infile, outfile, lang=u'en'):
+def lowercase(infile, outfile):
     """
     todo this later
     """ 
@@ -107,14 +79,13 @@ def filter_tweets(infile, outfile, lang=u'en'):
             
             batch_length = len(batch)
             n_processed += batch_length
-            start_time = time.time()
             del batch[:]
         
             # start procs
             procs = []
             for i in xrange(NUM_PROCS):
                 proc = multiprocessing.Process(target=worker,
-                                        args=(workq, writeq, lang))
+                                        args=(workq, writeq))
                 proc.start()
                 procs.append(proc)
 
@@ -124,39 +95,24 @@ def filter_tweets(infile, outfile, lang=u'en'):
             procs.append(proc)
             # wait for processes to finish
             [proc.join() for proc in procs]
-            end_time = time.time()
-            processed_per_second = (batch_length / (end_time - start_time)) / 1000
-            print('total processed lines = %dk' % int(n_processed / 1000))
-            print('processed lines per second = %dk' % int(processed_per_second))
-            
-
-
+            print('total lowered lines = %fk' % (n_processed / 1000))
+    
+    
 def main():
     '''main'''
-    lang_codes = [u'en']
     
     parser = argparse.ArgumentParser()
     parser.add_argument('input_tweet_file')
-    parser.add_argument('output_files', help='one or more file_names comma_seperated')
-    parser.add_argument('-l', '--lang_codes', help='language codes comma-seperated')
+    parser.add_argument('output_file')
     
     args = parser.parse_args()
     
 
     infile = args.input_tweet_file
-    outfiles = args.output_files.split(',')
+    outfile = args.output_file
 
-    if args.lang_codes:
-        lang_codes = unicode(args.lang_codes).split(',')
-        
-    if not len(outfiles) == len(lang_codes):
-        print('Output files and language codes does not match in size')
-        sys.exit(0)
-                
-    
-    for lang_code, outfile in zip(lang_codes, outfiles):
-        print('Using %s as language code' % lang_code)
-        filter_tweets(infile, outfile, lang=lang_code)
+
+    lowercase(infile, outfile)
     
 
 if __name__ == '__main__':

@@ -17,11 +17,12 @@ and collected news tweets also in LD-JSON format.
 """
 
 
-import sys
 import os
 from newsfeed_tweets import convert_tweets
 from filter_lang import filter_tweets
 from tweet_text import preprocess_tweet_file
+from lowercase import lowercase
+
 import argparse
 
 def main():
@@ -29,8 +30,11 @@ def main():
     max_num_urls = 1
     max_num_users = 3 
     newsfeed_path = None
-    lowercasing = 'yes'
-    
+    lowercasing = False
+    replace_hashtags = False
+    replace_users = False
+    replacements = {'user': 'TUSERUSER', 'url': 'TURLURL', 'hashtag': 'THASHTAG', 
+                    'symbol': 'TSYMBOL'}
     
     parser = argparse.ArgumentParser()
     parser.add_argument('lang_codes', help='lang codes comma-seperated')
@@ -42,7 +46,10 @@ def main():
     parser.add_argument('-t', '--min_tokens', type=int)
     parser.add_argument('-url', '--max_urls', type=int)
     parser.add_argument('-u', '--max_users', type=int)
-    parser.add_argument('-l', '--lowercasing', type=int, choices=[0,1])
+    parser.add_argument('-l', '--lowercasing', dest='lowercasing', action='store_true')
+    parser.add_argument('-rh', '--replace_hashtags', dest='replace_hashtag', action='store_true')
+    parser.add_argument('-ru', '--replace_users', dest='replace_users', action='store_true')
+    parser.add_argument('-s', '--hashtag_symbol')
     
     args = parser.parse_args()   
     
@@ -59,16 +66,21 @@ def main():
         max_num_urls = args.max_urls
     if args.max_users:
         max_num_users = args.max_users
-    if args.lowercasing:
-        if args.lowercasing == 0:
-            lowercasing = 'no'
+    lowercasing = args.lowercasing
+    replace_hashtags = args.replace_hashtags
+    replace_users = args.replace_users
+    if args.hashtag_symbol:
+        #update hashtag symbol
+        replacements['hashtag'] = args.hashtag_symbol 
+    
+
+
 
     # create tmpdir 
     #tmpdir = './tmp'
     #if not os.path.isdir(tmpdir):
     #    os.makedirs(tmpdir)
-        
-
+    
     
     filename = os.path.basename(tweets_file)
     tweets_path = os.path.dirname(tweets_file)
@@ -85,14 +97,32 @@ def main():
         outfile = os.path.join(tweets_path, outfile) 
         filter_tweets(tweets_file, outfile, lang=lang_code)
    
-        # Preprocess Text  
-        input_file = outfile 
-        output_file = 'tweets.pp.' + lang_code + '.json.gz' 
-        output_file = os.path.join(tweets_path, output_file) 
-        preprocess_tweet_file(input_file, output_file, min_tokens, max_num_urls, max_num_users, lowercasing)
+        if lowercasing:
+            infile = outfile
+            outfile = 'tweets.lowercase.' + lang_code + '.json.gz'
+            outfile = os.path.join(tweets_path, outfile)
+            lowercase(infile, outfile)
+            
+            # Preprocess Text  
+            input_file = outfile 
+            output_file = 'tweets.pp.lowercase.' + lang_code + '.json.gz' 
+            output_file = os.path.join(tweets_path, output_file) 
+                   
+            
+            preprocess_tweet_file(input_file, output_file, min_tokens, 
+                                  max_num_urls, max_num_users, replace_hashtags, 
+                                  replace_users, replacements)
 
+        else:      
+            # Preprocess Text  
+            input_file = outfile
+            output_file = 'tweets.pp.' + lang_code + '.json.gz' 
+            output_file = os.path.join(tweets_path, output_file) 
+            preprocess_tweet_file(input_file, output_file, min_tokens, 
+                                  max_num_urls, max_num_users, replace_hashtags, 
+                                  replace_users, replacements)
 
-
+        
     #@todo remove tmpdir
     
 if __name__ == '__main__':
