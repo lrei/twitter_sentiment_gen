@@ -22,6 +22,7 @@ from newsfeed_tweets import convert_tweets
 from filter_lang import filter_tweets
 from tweet_text import preprocess_tweet_file
 from lowercase import lowercase
+#from classify_langid import filter_langid
 
 import argparse
 
@@ -33,6 +34,7 @@ def main():
     lowercasing = False
     replace_hashtags = False
     replace_users = False
+    langid_min_prob = 0.8
     replacements = {'user': 'TUSERUSER', 'url': 'TURLURL', 'hashtag': 'THASHTAG', 
                     'symbol': 'TSYMBOL'}
     
@@ -50,6 +52,8 @@ def main():
     parser.add_argument('-rh', '--replace_hashtags', dest='replace_hashtag', action='store_true')
     parser.add_argument('-ru', '--replace_users', dest='replace_users', action='store_true')
     parser.add_argument('-s', '--hashtag_symbol')
+    parser.add_argument('-prob', '--langid_min_prob')
+
     
     args = parser.parse_args()   
     
@@ -69,10 +73,10 @@ def main():
     lowercasing = args.lowercasing
     replace_hashtags = args.replace_hashtags
     replace_users = args.replace_users
-    if args.hashtag_symbol:
-        #update hashtag symbol
+    if args.hashtag_symbol and replace_hashtags:
         replacements['hashtag'] = args.hashtag_symbol 
-    
+    if args.langid_min_prob:
+        langid_min_prob = args.langid_min_prob
 
 
 
@@ -105,7 +109,7 @@ def main():
             
             # Preprocess Text  
             input_file = outfile 
-            output_file = 'tweets.pp.lowercase.' + lang_code + '.json.gz' 
+            output_file = 'tweets.pp.' + lang_code + '.json.gz' 
             output_file = os.path.join(tweets_path, output_file) 
                    
             
@@ -122,6 +126,14 @@ def main():
                                   max_num_urls, max_num_users, replace_hashtags, 
                                   replace_users, replacements)
 
+        
+        
+        '''
+        tweet_file = output_file
+        dest_file = 'tweets.classify.pp.' + lang_code + '.json.gz'
+        dest_file = os.path.join(tweets_path,dest_file)
+        filter_langid(tweet_file, dest_file, replacements, lang_code, langid_min_prob)
+        '''
         
     #@todo remove tmpdir
     

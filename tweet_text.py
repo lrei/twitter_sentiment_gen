@@ -1,9 +1,8 @@
 '''
-Simple tweet text preprocessing module, processes .json.gz files
+Tweet text preprocessing module, processes .json.gz files
 '''
 
 from __future__ import print_function
-import sys
 import re
 import multiprocessing
 import gzip
@@ -14,8 +13,7 @@ import argparse
 
 #re_user = re.compile(r'(?<=^|(?<=[^a-zA-Z0-9-_\.]))@([A-Za-z]+[A-Za-z0-9]+)')
 re_tok = re.compile(r'\w+|[^\w\s]+')
-replacements = {'user': 'TUSERUSER', 'url': 'TURLURL', 'hashtag': 'THASHTAG', 
-                'symbol': 'TSYMBOL'}
+
 
 
 #def simple_replace_user(tweet):
@@ -38,7 +36,7 @@ def update_indices(list_of_indices, delta, start_index):
 
 
 
-def replace_entity(entity, tweet, indices_list, list1, list2, list3, list4):
+def replace_entity(entity, tweet, indices_list, list1, list2, list3, list4, replacements):
     for index_list in indices_list: 
         username_length = index_list[1] - index_list[0] 
         replacement_word_length = len(replacements[entity])
@@ -53,7 +51,7 @@ def replace_entity(entity, tweet, indices_list, list1, list2, list3, list4):
         update_indices(indices_list, delta, index_list[0]) 
         
 
-def replace_entities(tweet):
+def replace_entities(tweet, replace_hashtags, replace_users, replacements):
     ''' Replacement for twitter @user'''
     if 'entities' not in tweet:
         return None
@@ -112,36 +110,34 @@ def replace_entities(tweet):
 
 
 
-    if list_of_users_indices is not None:
+    if list_of_users_indices is not None and replace_users:
         replace_entity('user', tweet, list_of_users_indices, list_of_urls_indices, 
                         list_of_hashtags_indices, list_of_symbols_indices, 
-                        list_of_media_indices)    
+                        list_of_media_indices, replacements)    
 
     if list_of_urls_indices is not None:     
         replace_entity('url', tweet, list_of_urls_indices, list_of_users_indices,
                     list_of_hashtags_indices, list_of_symbols_indices, 
-                    list_of_media_indices)
+                    list_of_media_indices, replacements)
      
-    if list_of_hashtags_indices is not None:       
+    if list_of_hashtags_indices is not None and replace_hashtags:       
         replace_entity('hashtag', tweet, list_of_hashtags_indices, 
                     list_of_users_indices, list_of_urls_indices, 
-                    list_of_symbols_indices, list_of_media_indices)
+                    list_of_symbols_indices, list_of_media_indices, replacements)
                    
     if list_of_symbols_indices is not None:        
         replace_entity('symbol', tweet, list_of_symbols_indices, list_of_users_indices, 
                     list_of_urls_indices, list_of_hashtags_indices, 
-                    list_of_media_indices)     
+                    list_of_media_indices, replacements)     
                    
     if list_of_media_indices is not None:
         replace_entity('url', tweet, list_of_media_indices, list_of_symbols_indices, 
                     list_of_users_indices, list_of_urls_indices, 
-                    list_of_hashtags_indices) 
+                    list_of_hashtags_indices, replacements) 
     
     
     # remove property entities, include id
-    ntweet = {u'text': tweet[u'text'], u'lang': tweet[u'lang']}
-    if 'id' in tweet:
-        ntweet['id'] = tweet['id']
+    ntweet = {u'text': tweet[u'text'], u'lang': tweet[u'lang'], u'id': tweet['id']}
     
     return ntweet      
     
@@ -151,7 +147,8 @@ def word_tokenize(tweet):
     tweet['text'] = u' '.join(re_tok.findall(tweet['text']))
     return tweet
 
-def preprocess_tweet(min_tokens, max_num_urls, max_num_users, lowercasing, tweet_line):
+def preprocess_tweet(min_tokens, max_num_urls, max_num_users, replace_hashtags, 
+                     replace_users, replacements, tweet_line):
     ''' Preprocess a single tweet '''
     try:
         tweet = json.loads(tweet_line)
@@ -168,12 +165,8 @@ def preprocess_tweet(min_tokens, max_num_urls, max_num_users, lowercasing, tweet
         return None
 
     
-    # lower
-    if lowercasing == 'yes':
-        tweet['text'] = tweet['text'].lower()
-    
     # replace entities
-    tweet = replace_entities(tweet)
+    tweet = replace_entities(tweet, replace_hashtags, replace_users, replacements)
     
     
     # tokenize
@@ -183,12 +176,9 @@ def preprocess_tweet(min_tokens, max_num_urls, max_num_users, lowercasing, tweet
     
     #filter based on num of tokens
     tokens = tweet['text'].split()
-    tokens = [x for x in tokens
-              if x not in replacements['user'] 
-              and x not in replacements['url']
-              and x not in  replacements['symbol']
-              and x not in replacements['hashtag']
-              and x.isalpha() and x not in 'rt']
+    list_replacements = replacements.values()
+    tokens = [x for x in tokens if x not in list_replacements
+              and x.isalpha() and x.lower() != 'rt']
         
         
     if len(tokens) < min_tokens:
@@ -199,19 +189,25 @@ def preprocess_tweet(min_tokens, max_num_urls, max_num_users, lowercasing, tweet
     
 
 
-def preprocess_tweet_lines(lines, pool, min_tokens, max_num_urls, max_num_users, lowercasing):
+def preprocess_tweet_lines(lines, pool, min_tokens, max_num_urls, max_num_users, 
+                            replace_hashtags, replace_users, replacements):
     ''' Parallel preprocess multiple tweets (as a list of tweets) '''
-    func = partial(preprocess_tweet, min_tokens, max_num_urls, max_num_users, lowercasing)
+    func = partial(preprocess_tweet, min_tokens, max_num_urls, max_num_users, 
+                   replace_hashtags, replace_users, replacements)
     lines = pool.map(func, lines)
     return lines
 
 
-def preprocess_tweet_file(input_fname, output_fname, min_tokens, max_num_urls, max_num_users, lowercasing):
+def preprocess_tweet_file(input_fname, output_fname, min_tokens, max_num_urls, 
+                           max_num_users, replace_hashtags, replace_users, replacements):
     ''' Preprocess an entire file '''
     pool = multiprocessing.Pool(multiprocessing.cpu_count())
+    
     # read input
     with gzip.open(input_fname, 'r') as source:
-        lines = preprocess_tweet_lines(source.readlines(), pool, min_tokens, max_num_urls, max_num_users, lowercasing)
+        lines = preprocess_tweet_lines(source.readlines(), pool, min_tokens, 
+                                       max_num_urls, max_num_users, 
+                                       replace_hashtags, replace_users, replacements)
 
     # write to output
     with gzip.open(output_fname, 'w') as destination:
@@ -227,15 +223,20 @@ def main():
     min_tokens = 10 # default parameters
     max_num_urls = 1
     max_num_users = 3 
-    lowercasing = 'no'
-    
+    replace_users = False
+    replace_hashtags = False
+    replacements = {'user': 'TUSERUSER', 'url': 'TURLURL', 'hashtag': 'THASHTAG', 
+                    'symbol': 'TSYMBOL'}
+
     parser = argparse.ArgumentParser()
     parser.add_argument('infile')
     parser.add_argument('outfile')
     parser.add_argument('-t', '--min_tokens', type=int)
     parser.add_argument('-url', '--max_urls', type=int)
     parser.add_argument('-u', '--max_users', type=int)
-    parser.add_argument('-l', --'lowercasing', type=int, choices=[0,1])
+    parser.add_argument('-rh', '--replace_hashtags', dest='replace_hashtags', action='store_true')
+    parser.add_argument('-ru', '--replace_users', dest='replace_users', action='store_true')
+    parser.add_argument('-s', '--hashtag_symbol')
     args = parser.parse_args()
 
     if args.min_tokens:
@@ -246,12 +247,15 @@ def main():
         
     if args.max_users:
         max_num_users = args.max_users
-    
-    if args.lowercasing:
-        if args.lowercasing == 1:
-            lowercasing = 'yes'
+    replace_hashtags = args.replace_hashtags
+    replace_users = args.replace_users
+    if args.hashtag_symbol and replace_hashtags:
+        replacements['hashtag'] = args.hashtag_symbol
         
-    preprocess_tweet_file(sys.argv[1], sys.argv[2], min_tokens, max_num_urls, max_num_users, lowercasing)
+        
+        
+    preprocess_tweet_file(args.infile, args.outfile, min_tokens, max_num_urls, 
+                          max_num_users, replace_hashtags, replace_users, replacements)
 
 
 if __name__ == '__main__':

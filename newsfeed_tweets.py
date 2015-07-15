@@ -11,14 +11,13 @@ Also replaces newlines in the tweet text and strips()s them
 
 from __future__ import print_function
 import os
-import codecs
 import gzip
 import cPickle as pickle
 import json
 from multiprocessing import Pool, cpu_count
 from functools import partial
 import shutil
-import sys
+import argparse
 
 
 def load_tweets(file_path, open_function=open, dest_path=None):
@@ -124,16 +123,14 @@ def convert_tweets(read_dir, dest_path, filename):
             os.remove(fname)
     
 
-def main():
-    cmd_name = sys.argv[0]
-    if len(sys.argv) not in [3, 4]:
-        usage = 'Usage:\n\t%{cmd} ' \
-                'read_dir dest_path filename'
-        usage.format(cmd=cmd_name)
-        print(usage)
-        sys.exit(0)
+def main(): 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('read_dir')
+    parser.add_argument('dest_path')
+    parser.add_argument('filename')
+    args = parser.parse_args()
     
-    convert_tweets(sys.argv[1], sys.argv[2], sys.argv[3])
+    convert_tweets(args.read_dir, args.dest_path, args.filename)
 
 
 if __name__ == '__main__':

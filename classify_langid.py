@@ -4,19 +4,15 @@ import json
 from tweet_text import word_tokenize
 import multiprocessing
 import Queue
-import time
+#import time
 import itertools
 import langid
 import argparse
-
-replacements = {'user': 'TUSERUSER', 'url': 'TURLURL', 'hashtag': 'THASHTAG', 
-                'symbol': 'TSYMBOL'}
-# MULTIPROCESSING
-NUM_PROCS = multiprocessing.cpu_count() - 2
-QUEUE_MAX_SIZE = NUM_PROCS * 50
+from filter_lang import NUM_PROCS, QUEUE_MAX_SIZE
 
 
-def filter_classify_lang_line(line, lang, langid_min_prob):
+
+def filter_classify_lang_line(line, lang, langid_min_prob, replacements):
     try:
         tweet = json.loads(line)
     except:
@@ -28,13 +24,10 @@ def filter_classify_lang_line(line, lang, langid_min_prob):
     tweet = word_tokenize(tweet)        
     
     tokens = tweet['text'].split()
-    tokens = [x for x in tokens
-            if x not in replacements['user'] 
-            and x not in replacements['url']
-            and x not in  replacements['symbol']
-            and x not in replacements['hashtag']
-            and x.isalpha() and x not in 'rt'
-            and x not in 'RT']
+    
+    list_replacements = replacements.values()
+    tokens = [x for x in tokens if x not in list_replacements
+              and x.isalpha() and x.lower() != 'rt']
     
     if not tokens:
         return  None
@@ -54,14 +47,14 @@ def filter_classify_lang_line(line, lang, langid_min_prob):
     return tweet
 
 
-def worker(q, writeq, lang, langid_min_prob):
+def worker(q, writeq, lang, langid_min_prob, replacements):
     while True:
         try:
             entry = q.get(block=False)
         except Queue.Empty:
             break
         
-        tweet = filter_classify_lang_line(entry, lang, langid_min_prob)
+        tweet = filter_classify_lang_line(entry, lang, langid_min_prob, replacements)
         if tweet is not None:
             tweet_string = json.dumps(tweet)  + u'\n'
             writeq.put(tweet_string)
@@ -92,7 +85,7 @@ def read_in_chunks(file_object, chunk_size=1024):
         yield data
 
 
-def filter_langid(tweet_file, outfile, lang=u'en', langid_min_prob=0.80):    
+def filter_langid(tweet_file, outfile, replacements, lang=u'en', langid_min_prob=0.80):    
     #
     # Filter based on language using langid
     #
@@ -110,14 +103,14 @@ def filter_langid(tweet_file, outfile, lang=u'en', langid_min_prob=0.80):
             
             batch_length = len(batch)
             n_processed += batch_length
-            start_time = time.time()
+#            start_time = time.time()
             del batch[:]
         
             # start procs
             procs = []
             for i in xrange(NUM_PROCS):
                 proc = multiprocessing.Process(target=worker,
-                                        args=(workq, writeq, lang, langid_min_prob))
+                                        args=(workq, writeq, lang, langid_min_prob, replacements))
                 proc.start()
                 procs.append(proc)
 
@@ -127,22 +120,26 @@ def filter_langid(tweet_file, outfile, lang=u'en', langid_min_prob=0.80):
             procs.append(proc)
             # wait for processes to finish
             [proc.join() for proc in procs]
-            end_time = time.time()
-            processed_per_second = (batch_length / (end_time - start_time)) / 1000
+#            end_time = time.time()
+#            processed_per_second = (batch_length / (end_time - start_time)) / 1000
             print('total classified lines = %fk' % (n_processed / 1000))
-            print('classified lines per second = %fk' % processed_per_second)
+#            print('classified lines per second = %fk' % processed_per_second)
            
     
 def main():
     lang_code = u'en'
     langid_min_prob = 0.8
+    replacements = {'user': 'TUSERUSER', 'url': 'TURLURL', 'hashtag': 'THASHTAG', 
+                    'symbol': 'TSYMBOL'}
+    
     
     parser = argparse.ArgumentParser()
     parser.add_argument('tweet_infile')
     parser.add_argument('dest_file')
     parser.add_argument('-lc', '--lang_code')
     parser.add_argument('-p', '---langid_min_prob', type=float)
-    
+    parser.add_argument('-s', '--hashtag_symbol')
+ 
     args = parser.parse_args()
 
     
@@ -153,15 +150,12 @@ def main():
     
     if args.langid_min_prob:
         langid_min_prob = args.langid_min_prob
-
-    '''    
-    print('tweet_infile: %s' % tweet_file)
-    print('dest_file: %s' % dest_file)
-    print('lang_code: %s' % lang_code)
-    print('langid_min_prob: %f' % langid_min_prob)
-    '''
-    
-    filter_langid(tweet_file, dest_file, lang_code, langid_min_prob)
+       
+    #update hashtag symbol 
+    if args.hashtag_symbol:
+        replacements['hashtag'] = args.hashtag_symbol
+        
+    filter_langid(tweet_file, dest_file, replacements, lang_code, langid_min_prob)
        
    
 if __name__ == '__main__':
