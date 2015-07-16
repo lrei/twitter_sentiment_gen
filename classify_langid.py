@@ -1,11 +1,7 @@
-
 import gzip
 import json
 from tweet_text import word_tokenize
 import multiprocessing
-import Queue
-#import time
-import itertools
 import langid
 import argparse
 from filter_lang import NUM_PROCS, QUEUE_MAX_SIZE
@@ -49,10 +45,10 @@ def filter_classify_lang_line(line, lang, langid_min_prob, replacements):
 
 def worker(q, writeq, lang, langid_min_prob, replacements):
     while True:
-        try:
-            entry = q.get(block=False)
-        except Queue.Empty:
-            break
+        entry = q.get(block=True)
+        if type(entry) == int:
+            if entry < 0:
+                break
         
         tweet = filter_classify_lang_line(entry, lang, langid_min_prob, replacements)
         if tweet is not None:
@@ -61,10 +57,12 @@ def worker(q, writeq, lang, langid_min_prob, replacements):
             
     writeq.put(-1)
     
-
+    
+    
 def writer(q, outfile, n_readers):
+    counter = 0
     with gzip.open(outfile, 'a') as destination:
-         while True:
+        while True:
             tweet = q.get(block=True)
             if type(tweet) == int:
                 if tweet == -1:
@@ -72,18 +70,20 @@ def writer(q, outfile, n_readers):
                     if n_readers == 0:
                         break
             else:
-                destination.write(tweet)
+               destination.write(tweet)
+               counter += 1
+               if counter % 2*QUEUE_MAX_SIZE == 0:
+                   print('total calssified lines = %dk' % (int(counter / 1000)))
 
 
-def read_in_chunks(file_object, chunk_size=1024):
-    """Lazy function (generator) to read a file piece by piece.
-    Default chunk size: 1k."""
-    while True:
-        data = list(itertools.islice(file_object, chunk_size))
-        if not data:
-            break
-        yield data
-
+def reader(q, infile, n_workers):
+    with gzip.open(infile, 'r') as source:
+        for line in source:
+            # add to queue      
+            q.put(line)
+            
+    for ii in range(n_workers):
+        q.put(-1)
 
 def filter_langid(tweet_file, outfile, replacements, lang=u'en', langid_min_prob=0.80):    
     #
@@ -91,39 +91,30 @@ def filter_langid(tweet_file, outfile, replacements, lang=u'en', langid_min_prob
     #
     
     
-    workq = multiprocessing.Queue()
+    workq = multiprocessing.Queue(QUEUE_MAX_SIZE)
     writeq = multiprocessing.Queue()
-    n_processed = 0
     
     
-    with gzip.open(tweet_file, 'r') as source:
-        for batch in read_in_chunks(source, QUEUE_MAX_SIZE):
-             # add to queue    
-            [workq.put(entry) for entry in batch]
-            
-            batch_length = len(batch)
-            n_processed += batch_length
-#            start_time = time.time()
-            del batch[:]
-        
-            # start procs
-            procs = []
-            for i in xrange(NUM_PROCS):
-                proc = multiprocessing.Process(target=worker,
-                                        args=(workq, writeq, lang, langid_min_prob, replacements))
-                proc.start()
-                procs.append(proc)
+    # start procs
+    procs = []
+    proc = multiprocessing.Process(target=reader,
+                                    args=(workq, tweet_file, NUM_PROCS))
+    proc.start()
+    procs.append(proc)
 
-            proc = multiprocessing.Process(target=writer,
-                                        args=(writeq,outfile, NUM_PROCS))
-            proc.start()
-            procs.append(proc)
-            # wait for processes to finish
-            [proc.join() for proc in procs]
-#            end_time = time.time()
-#            processed_per_second = (batch_length / (end_time - start_time)) / 1000
-            print('total classified lines = %fk' % (n_processed / 1000))
-#            print('classified lines per second = %fk' % processed_per_second)
+    for i in xrange(NUM_PROCS):
+        proc = multiprocessing.Process(target=worker,
+                                args=(workq, writeq, lang, langid_min_prob, replacements))
+        proc.start()
+        procs.append(proc)
+
+    proc = multiprocessing.Process(target=writer,
+                                args=(writeq,outfile, NUM_PROCS))
+    proc.start()
+    procs.append(proc)
+    # wait for processes to finish
+    [proc.join() for proc in procs]
+
            
     
 def main():

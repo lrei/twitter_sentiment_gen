@@ -7,8 +7,8 @@ import re
 import multiprocessing
 import gzip
 import json
-from functools import partial
 import argparse
+from filter_lang import QUEUE_MAX_SIZE, NUM_PROCS
 
 
 #re_user = re.compile(r'(?<=^|(?<=[^a-zA-Z0-9-_\.]))@([A-Za-z]+[A-Za-z0-9]+)')
@@ -189,34 +189,87 @@ def preprocess_tweet(min_tokens, max_num_urls, max_num_users, replace_hashtags,
     
 
 
-def preprocess_tweet_lines(lines, pool, min_tokens, max_num_urls, max_num_users, 
-                            replace_hashtags, replace_users, replacements):
-    ''' Parallel preprocess multiple tweets (as a list of tweets) '''
-    func = partial(preprocess_tweet, min_tokens, max_num_urls, max_num_users, 
-                   replace_hashtags, replace_users, replacements)
-    lines = pool.map(func, lines)
-    return lines
+def worker(q, writeq, min_tokens, max_num_urls, max_num_users, replace_hashtags, 
+           replace_users, replacements):
+           
+    while True:
+        entry = q.get(block=True)
+        if type(entry) == int:
+            if entry < 0:
+                break
+                
+        # process tweet
+        tweet = preprocess_tweet(min_tokens, max_num_urls, max_num_users, replace_hashtags, 
+                                 replace_users, replacements, entry)
+        if tweet is not None:
+            tweet_string = json.dumps(tweet)  + u'\n'
+            writeq.put(tweet_string)
+            
+    # exit
+    writeq.put(-1)
+    
+
+    
+    
+def writer(q, outfile, n_readers):
+    counter = 0
+    with gzip.open(outfile, 'a') as destination:
+        while True:
+            tweet = q.get(block=True)
+            if type(tweet) == int:
+                if tweet == -1:
+                    n_readers = n_readers -1
+                    if n_readers == 0:
+                        break
+            else:
+               destination.write(tweet)
+               counter += 1
+               if counter % 2*QUEUE_MAX_SIZE == 0:
+                   print('total processed lines = %dk' % (int(counter / 1000)))
+    
+
+
+def reader(q, infile, n_workers):
+    with gzip.open(infile, 'r') as source:
+        for line in source:
+            # add to queue      
+            q.put(line)
+            
+    for ii in range(n_workers):
+        q.put(-1)
 
 
 def preprocess_tweet_file(input_fname, output_fname, min_tokens, max_num_urls, 
                            max_num_users, replace_hashtags, replace_users, replacements):
     ''' Preprocess an entire file '''
-    pool = multiprocessing.Pool(multiprocessing.cpu_count())
     
-    # read input
-    with gzip.open(input_fname, 'r') as source:
-        lines = preprocess_tweet_lines(source.readlines(), pool, min_tokens, 
-                                       max_num_urls, max_num_users, 
-                                       replace_hashtags, replace_users, replacements)
+    workq = multiprocessing.Queue(QUEUE_MAX_SIZE)
+    writeq = multiprocessing.Queue()
+    
+    
+    # start procs
+    procs = []
+    proc = multiprocessing.Process(target=reader,
+                                    args=(workq, input_fname, NUM_PROCS))
+    proc.start()
+    procs.append(proc)
+    
+    
+    for i in xrange(NUM_PROCS):
+        proc = multiprocessing.Process(target=worker,
+                                        args=(workq, writeq, min_tokens, 
+                                              max_num_urls, max_num_users, replace_hashtags, 
+                                              replace_users, replacements))
+        proc.start()
+        procs.append(proc)
 
-    # write to output
-    with gzip.open(output_fname, 'w') as destination:
-        for line in lines:
-            if line is not None:
-                tweet_string = json.dumps(line)  + u'\n'
-                destination.write(tweet_string)
-
-
+    proc = multiprocessing.Process(target=writer,
+                                   args=(writeq, output_fname, NUM_PROCS))
+    proc.start()
+    procs.append(proc)
+    # wait for processes to finish
+    [proc.join() for proc in procs]
+    
 
 
 def main():
