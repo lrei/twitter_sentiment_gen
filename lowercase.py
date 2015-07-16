@@ -7,7 +7,6 @@ from __future__ import division
 import json
 import gzip
 import multiprocessing
-import itertools
 import argparse
 from filter_lang import NUM_PROCS, QUEUE_MAX_SIZE
 
@@ -40,16 +39,6 @@ def worker(q, writeq):
             writeq.put(tweet_string)
     
     writeq.put(-1)
-
-
-def read_in_chunks(file_object, chunk_size=1024):
-    """Lazy function (generator) to read a file piece by piece.
-    Default chunk size: 1k."""
-    while True:
-        data = list(itertools.islice(file_object, chunk_size))
-        if not data:
-            break
-        yield data
         
         
 def writer(q, outfile, n_readers):

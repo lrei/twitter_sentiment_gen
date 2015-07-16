@@ -14,7 +14,6 @@ import json
 import gzip
 import multiprocessing
 import time
-import itertools
 import argparse
 
 
@@ -72,14 +71,7 @@ def worker(q, writeq, lang):
     writeq.put(-1)
 
 
-def read_in_chunks(file_object, chunk_size=1024):
-    """Lazy function (generator) to read a file piece by piece.
-    Default chunk size: 1k."""
-    while True:
-        data = list(itertools.islice(file_object, chunk_size))
-        if not data:
-            break
-        yield data
+
         
         
 def writer(q, outfile, n_readers):
