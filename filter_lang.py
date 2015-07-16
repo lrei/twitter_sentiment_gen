@@ -157,7 +157,7 @@ def main():
         lang_codes = unicode(args.lang_codes).split(',')
         
     if not len(outfiles) == len(lang_codes):
-        print('Output files and language codes does not match in size')
+        print('Output files and language codes do not match in size')
         sys.exit(0)
                 
     print('using %d procs' % NUM_PROCS)

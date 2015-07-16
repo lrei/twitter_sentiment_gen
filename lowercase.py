@@ -73,7 +73,7 @@ def lowercase(infile, outfile):
     """
     todo this later
     """ 
-    workq = multiprocessing.Queue()
+    workq = multiprocessing.Queue(QUEUE_MAX_SIZE)
     writeq = multiprocessing.Queue()
     
     

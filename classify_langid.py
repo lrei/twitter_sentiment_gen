@@ -1,3 +1,9 @@
+"""
+Reads a Line Delimited JSON file containing tweets. Tweets in file should be preprocessed so classify works better when removing replacements for entities.
+Outputs only those with the selected language probability higher than 'langid_min_prob'.
+"""
+
+
 import gzip
 import json
 from tweet_text import word_tokenize
@@ -128,8 +134,8 @@ def main():
     parser.add_argument('tweet_infile')
     parser.add_argument('dest_file')
     parser.add_argument('-lc', '--lang_code')
-    parser.add_argument('-p', '---langid_min_prob', type=float)
-    parser.add_argument('-s', '--hashtag_symbol')
+    parser.add_argument('-p', '---langid_min_prob', type=float, help='outputs only tweets that have langid_min_prob or higher probability')
+    parser.add_argument('-s', '--hashtag_symbol', help='symbol with which hashtags are replaced (needed to remove from text when using classify function)')
  
     args = parser.parse_args()
 

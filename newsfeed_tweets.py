@@ -5,7 +5,7 @@
 """
 Reads a directory of directories (recursive) containing tweets in the
 newsfeed pickled/gzipped format.
-Outputs Line Delimited JSON containing only 'text' and 'lang'
+Outputs Line Delimited JSON containing 'text', 'lang', 'entities' and 'id_str'
 Also replaces newlines in the tweet text and strips()s them
 """
 

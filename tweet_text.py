@@ -9,6 +9,7 @@ import gzip
 import json
 import argparse
 from filter_lang import QUEUE_MAX_SIZE, NUM_PROCS
+import sys
 
 
 #re_user = re.compile(r'(?<=^|(?<=[^a-zA-Z0-9-_\.]))@([A-Za-z]+[A-Za-z0-9]+)')
@@ -282,14 +283,14 @@ def main():
                     'symbol': 'TSYMBOL'}
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('infile')
-    parser.add_argument('outfile')
+    parser.add_argument('input_files', help='input files comma seperated')
+    parser.add_argument('output_files', help='output files comma seperated')
     parser.add_argument('-t', '--min_tokens', type=int)
     parser.add_argument('-url', '--max_urls', type=int)
     parser.add_argument('-u', '--max_users', type=int)
     parser.add_argument('-rh', '--replace_hashtags', dest='replace_hashtags', action='store_true')
     parser.add_argument('-ru', '--replace_users', dest='replace_users', action='store_true')
-    parser.add_argument('-s', '--hashtag_symbol')
+    parser.add_argument('-s', '--hashtag_symbol', help='symbol used to replace hashtags')
     args = parser.parse_args()
 
     if args.min_tokens:
@@ -302,13 +303,21 @@ def main():
         max_num_users = args.max_users
     replace_hashtags = args.replace_hashtags
     replace_users = args.replace_users
-    if args.hashtag_symbol and replace_hashtags:
+    if args.hashtag_symbol:
         replacements['hashtag'] = args.hashtag_symbol
+        replace_hashtags = True
         
         
-        
-    preprocess_tweet_file(args.infile, args.outfile, min_tokens, max_num_urls, 
-                          max_num_users, replace_hashtags, replace_users, replacements)
+    infiles = args.input_files.split(',')
+    outfiles = args.output_files.split(',')
+            
+    if not len(infiles) == len(outfiles):
+        print('Input files and output_files do not match in size')
+        sys.exit(0)
+    
+    for infile, outfile in zip(infiles, outfiles):
+        preprocess_tweet_file(infile, outfile, min_tokens, max_num_urls, 
+                            max_num_users, replace_hashtags, replace_users, replacements)
 
 
 if __name__ == '__main__':
