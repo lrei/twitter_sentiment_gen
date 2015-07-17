@@ -12,9 +12,9 @@ from filter_lang import QUEUE_MAX_SIZE, NUM_PROCS
 import sys
 
 
-#re_user = re.compile(r'(?<=^|(?<=[^a-zA-Z0-9-_\.]))@([A-Za-z]+[A-Za-z0-9]+)')
-re_tok = re.compile(r'\w+|[^\w\s]+')
 
+#re_user = re.compile(r'(?<=^|(?<=[^a-zA-Z0-9-_\.]))@([A-Za-z]+[A-Za-z0-9]+)')
+re_tok = re.compile(r'\w+|[^\w\s]+', re.UNICODE)
 
 
 #def simple_replace_user(tweet):
@@ -52,7 +52,7 @@ def replace_entity(entity, tweet, indices_list, list1, list2, list3, list4, repl
         update_indices(indices_list, delta, index_list[0]) 
         
 
-def replace_entities(tweet, replace_hashtags, replace_users, replacements):
+def replace_entities(tweet, replacements):
     ''' Replacement for twitter @user'''
     if 'entities' not in tweet:
         return None
@@ -111,34 +111,34 @@ def replace_entities(tweet, replace_hashtags, replace_users, replacements):
 
 
 
-    if list_of_users_indices is not None and replace_users:
+    if list_of_users_indices is not None and replacements['user'] is not None:
         replace_entity('user', tweet, list_of_users_indices, list_of_urls_indices, 
                         list_of_hashtags_indices, list_of_symbols_indices, 
                         list_of_media_indices, replacements)    
 
-    if list_of_urls_indices is not None:     
+    if list_of_urls_indices is not None and replacements['url'] is not None:     
         replace_entity('url', tweet, list_of_urls_indices, list_of_users_indices,
                     list_of_hashtags_indices, list_of_symbols_indices, 
                     list_of_media_indices, replacements)
      
-    if list_of_hashtags_indices is not None and replace_hashtags:       
+    if list_of_hashtags_indices is not None and replacements['hashtag'] is not None:       
         replace_entity('hashtag', tweet, list_of_hashtags_indices, 
                     list_of_users_indices, list_of_urls_indices, 
                     list_of_symbols_indices, list_of_media_indices, replacements)
                    
-    if list_of_symbols_indices is not None:        
+    if list_of_symbols_indices is not None and replacements['symbol'] is not None:        
         replace_entity('symbol', tweet, list_of_symbols_indices, list_of_users_indices, 
                     list_of_urls_indices, list_of_hashtags_indices, 
                     list_of_media_indices, replacements)     
                    
-    if list_of_media_indices is not None:
+    if list_of_media_indices is not None and replacements['url'] is not None:
         replace_entity('url', tweet, list_of_media_indices, list_of_symbols_indices, 
                     list_of_users_indices, list_of_urls_indices, 
                     list_of_hashtags_indices, replacements) 
     
     
     # remove property entities, include id
-    ntweet = {u'text': tweet[u'text'], u'lang': tweet[u'lang'], u'id': tweet['id']}
+    ntweet = {u'text': tweet['text'], u'lang': tweet['lang'], u'id': tweet['id']}
     
     return ntweet      
     
@@ -148,8 +148,7 @@ def word_tokenize(tweet):
     tweet['text'] = u' '.join(re_tok.findall(tweet['text']))
     return tweet
 
-def preprocess_tweet(min_tokens, max_num_urls, max_num_users, replace_hashtags, 
-                     replace_users, replacements, tweet_line):
+def preprocess_tweet(min_tokens, max_num_urls, max_num_users, replacements, tweet_line):
     ''' Preprocess a single tweet '''
     try:
         tweet = json.loads(tweet_line)
@@ -167,7 +166,7 @@ def preprocess_tweet(min_tokens, max_num_urls, max_num_users, replace_hashtags,
 
     
     # replace entities
-    tweet = replace_entities(tweet, replace_hashtags, replace_users, replacements)
+    tweet = replace_entities(tweet, replacements)
     
     
     # tokenize
@@ -179,7 +178,7 @@ def preprocess_tweet(min_tokens, max_num_urls, max_num_users, replace_hashtags,
     tokens = tweet['text'].split()
     list_replacements = replacements.values()
     tokens = [x for x in tokens if x not in list_replacements
-              and x.isalpha() and x.lower() != 'rt']
+              and x.isalpha() and x.lower() != u'rt']
         
         
     if len(tokens) < min_tokens:
@@ -190,8 +189,7 @@ def preprocess_tweet(min_tokens, max_num_urls, max_num_users, replace_hashtags,
     
 
 
-def worker(q, writeq, min_tokens, max_num_urls, max_num_users, replace_hashtags, 
-           replace_users, replacements):
+def worker(q, writeq, min_tokens, max_num_urls, max_num_users, replacements):
            
     while True:
         entry = q.get(block=True)
@@ -200,10 +198,9 @@ def worker(q, writeq, min_tokens, max_num_urls, max_num_users, replace_hashtags,
                 break
                 
         # process tweet
-        tweet = preprocess_tweet(min_tokens, max_num_urls, max_num_users, replace_hashtags, 
-                                 replace_users, replacements, entry)
+        tweet = preprocess_tweet(min_tokens, max_num_urls, max_num_users, replacements, entry)
         if tweet is not None:
-            tweet_string = json.dumps(tweet)  + u'\n'
+            tweet_string = json.dumps(tweet)  + '\n'
             writeq.put(tweet_string)
             
     # exit
@@ -241,7 +238,7 @@ def reader(q, infile, n_workers):
 
 
 def preprocess_tweet_file(input_fname, output_fname, min_tokens, max_num_urls, 
-                           max_num_users, replace_hashtags, replace_users, replacements):
+                           max_num_users, replacements):
     ''' Preprocess an entire file '''
     
     workq = multiprocessing.Queue(QUEUE_MAX_SIZE)
@@ -259,8 +256,8 @@ def preprocess_tweet_file(input_fname, output_fname, min_tokens, max_num_urls,
     for i in xrange(NUM_PROCS):
         proc = multiprocessing.Process(target=worker,
                                         args=(workq, writeq, min_tokens, 
-                                              max_num_urls, max_num_users, replace_hashtags, 
-                                              replace_users, replacements))
+                                              max_num_urls, max_num_users, 
+                                              replacements))
         proc.start()
         procs.append(proc)
 
@@ -277,10 +274,8 @@ def main():
     min_tokens = 10 # default parameters
     max_num_urls = 1
     max_num_users = 3 
-    replace_users = False
-    replace_hashtags = False
-    replacements = {'user': 'TUSERUSER', 'url': 'TURLURL', 'hashtag': 'THASHTAG', 
-                    'symbol': 'TSYMBOL'}
+    replacements = json.load(open('replacements.json'))
+
 
     parser = argparse.ArgumentParser()
     parser.add_argument('input_files', help='input files comma seperated')
@@ -288,9 +283,6 @@ def main():
     parser.add_argument('-t', '--min_tokens', type=int)
     parser.add_argument('-url', '--max_urls', type=int)
     parser.add_argument('-u', '--max_users', type=int)
-    parser.add_argument('-rh', '--replace_hashtags', dest='replace_hashtags', action='store_true')
-    parser.add_argument('-ru', '--replace_users', dest='replace_users', action='store_true')
-    parser.add_argument('-s', '--hashtag_symbol', help='symbol used to replace hashtags')
     args = parser.parse_args()
 
     if args.min_tokens:
@@ -301,13 +293,9 @@ def main():
         
     if args.max_users:
         max_num_users = args.max_users
-    replace_hashtags = args.replace_hashtags
-    replace_users = args.replace_users
-    if args.hashtag_symbol:
-        replacements['hashtag'] = args.hashtag_symbol
-        replace_hashtags = True
-        
-        
+
+       
+           
     infiles = args.input_files.split(',')
     outfiles = args.output_files.split(',')
             
@@ -317,7 +305,7 @@ def main():
     
     for infile, outfile in zip(infiles, outfiles):
         preprocess_tweet_file(infile, outfile, min_tokens, max_num_urls, 
-                            max_num_users, replace_hashtags, replace_users, replacements)
+                            max_num_users, replacements)
 
 
 if __name__ == '__main__':

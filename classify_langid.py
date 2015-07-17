@@ -1,12 +1,11 @@
 """
-Reads a Line Delimited JSON file containing tweets. Tweets in file should be preprocessed so classify works better when removing replacements for entities.
+Reads a Line Delimited JSON file containing tweets. Tweets in file should be preprocessed.
 Outputs only those with the selected language probability higher than 'langid_min_prob'.
 """
 
 
 import gzip
 import json
-from tweet_text import word_tokenize
 import multiprocessing
 import langid
 import argparse
@@ -23,19 +22,18 @@ def filter_classify_lang_line(line, lang, langid_min_prob, replacements):
             
     if tweet is None:
         return None
-    
-    tweet = word_tokenize(tweet)        
+           
     
     tokens = tweet['text'].split()
     
     list_replacements = replacements.values()
     tokens = [x for x in tokens if x not in list_replacements
-              and x.isalpha() and x.lower() != 'rt']
+              and x.isalpha() and x.lower() != u'rt']
     
     if not tokens:
         return  None
         
-    text = ' '.join(tokens)
+    text = u' '.join(tokens)
     
 
     # Check if identified language is the expected language
@@ -59,7 +57,7 @@ def worker(q, writeq, lang, langid_min_prob, replacements):
         
         tweet = filter_classify_lang_line(entry, lang, langid_min_prob, replacements)
         if tweet is not None:
-            tweet_string = json.dumps(tweet)  + u'\n'
+            tweet_string = json.dumps(tweet)  + '\n'
             writeq.put(tweet_string)
             
     writeq.put(-1)
@@ -92,7 +90,7 @@ def reader(q, infile, n_workers):
     for ii in range(n_workers):
         q.put(-1)
 
-def filter_langid(tweet_file, outfile, replacements, lang=u'en', langid_min_prob=0.80):    
+def filter_langid(tweet_file, outfile, replacements, lang, langid_min_prob):    
     #
     # Filter based on language using langid
     #
@@ -125,10 +123,9 @@ def filter_langid(tweet_file, outfile, replacements, lang=u'en', langid_min_prob
            
     
 def main():
-    lang_codes = [u'en']
+    lang_codes = ['en']
     langid_min_prob = 0.8
-    replacements = {'user': 'TUSERUSER', 'url': 'TURLURL', 'hashtag': 'THASHTAG', 
-                    'symbol': 'TSYMBOL'} #also in tweet_text and sentiment_gen
+    replacements = json.load(open('replacements.json'))
     
     
     parser = argparse.ArgumentParser()
@@ -136,7 +133,6 @@ def main():
     parser.add_argument('dest_files', help='output files comma seperated')
     parser.add_argument('-lc', '--lang_codes')
     parser.add_argument('-p', '---langid_min_prob', type=float, help='outputs only tweets that have langid_min_prob or higher probability')
-    parser.add_argument('-s', '--hashtag_symbol', help='symbol with which hashtags are replaced (needed to remove from text when using classify function)')
  
     args = parser.parse_args()
 
@@ -144,7 +140,7 @@ def main():
     tweet_files = args.tweet_infiles.split(',')
     dest_files = args.dest_files.split(',')
     if args.lang_codes:
-        lang_codes = unicode(args.lang_codes).split(',')
+        lang_codes = args.lang_codes.split(',')
 
     
     if not len(tweet_files) == len(dest_files):
@@ -158,10 +154,6 @@ def main():
     
     if args.langid_min_prob:
         langid_min_prob = args.langid_min_prob
-       
-    #update hashtag symbol 
-    if args.hashtag_symbol:
-        replacements['hashtag'] = args.hashtag_symbol
        
         
          

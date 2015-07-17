@@ -23,7 +23,7 @@ NUM_PROCS = multiprocessing.cpu_count() - 2
 QUEUE_MAX_SIZE = NUM_PROCS * 200000
 
 
-def filter_line(tweet_line, lang=u'en'):
+def filter_line(tweet_line, lang):
     """
     returns tweet if it is in one language (lang)
     """
@@ -64,7 +64,7 @@ def worker(q, writeq, lang):
         # process line
         tweet = filter_line(entry, lang)
         if tweet is not None:
-            tweet_string = json.dumps(tweet)  + u'\n'
+            tweet_string = json.dumps(tweet)  + '\n'
             writeq.put(tweet_string)
             
     # exit
@@ -106,7 +106,7 @@ def reader(q, infile, n_workers):
         q.put(-1)
 
 
-def filter_tweets(infile, outfile, lang=u'en'):
+def filter_tweets(infile, outfile, lang):
     """
     todo this later
     """ 
@@ -140,7 +140,7 @@ def filter_tweets(infile, outfile, lang=u'en'):
 
 def main():
     '''main'''
-    lang_codes = [u'en']
+    lang_codes = ['en']
     
     parser = argparse.ArgumentParser()
     parser.add_argument('input_tweet_file')
@@ -154,7 +154,7 @@ def main():
     outfiles = args.output_files.split(',')
 
     if args.lang_codes:
-        lang_codes = unicode(args.lang_codes).split(',')
+        lang_codes = args.lang_codes.split(',')
         
     if not len(outfiles) == len(lang_codes):
         print('Output files and language codes do not match in size')

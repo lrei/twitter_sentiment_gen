@@ -35,7 +35,7 @@ def worker(q, writeq):
             
         tweet = lower_line(entry)
         if tweet is not None:
-            tweet_string = json.dumps(tweet)  + u'\n'
+            tweet_string = json.dumps(tweet)  + '\n'
             writeq.put(tweet_string)
     
     writeq.put(-1)

@@ -23,7 +23,7 @@ from filter_lang import filter_tweets
 from tweet_text import preprocess_tweet_file
 from lowercase import lowercase
 #from classify_langid import filter_langid
-
+import json
 import argparse
 
 def main():
@@ -31,12 +31,8 @@ def main():
     max_num_urls = 1
     max_num_users = 3 
     newsfeed_path = None
-    lowercasing = False
-    replace_hashtags = False
-    replace_users = False
     langid_min_prob = 0.8
-    replacements = {'user': 'TUSERUSER', 'url': 'TURLURL', 'hashtag': 'THASHTAG', 
-                    'symbol': 'TSYMBOL'}
+    replacements = json.load(open('replacements.json'))
     
     parser = argparse.ArgumentParser()
     parser.add_argument('lang_codes', help='lang codes comma-seperated')
@@ -49,15 +45,12 @@ def main():
     parser.add_argument('-url', '--max_urls', type=int)
     parser.add_argument('-u', '--max_users', type=int)
     parser.add_argument('-l', '--lowercasing', dest='lowercasing', action='store_true')
-    parser.add_argument('-rh', '--replace_hashtags', dest='replace_hashtag', action='store_true')
-    parser.add_argument('-ru', '--replace_users', dest='replace_users', action='store_true')
-    parser.add_argument('-s', '--hashtag_symbol')
     parser.add_argument('-prob', '--langid_min_prob')
 
     
     args = parser.parse_args()   
     
-    lang_codes = args.lang_codes.split(',')
+    lang_codes = unicode(args.lang_codes).split(',')
     prob_smiley = args.prob_smiley
     min_langid_prob = args.min_langid_prob
     tweets_file = args.tweets_file
@@ -71,10 +64,6 @@ def main():
     if args.max_users:
         max_num_users = args.max_users
     lowercasing = args.lowercasing
-    replace_hashtags = args.replace_hashtags
-    replace_users = args.replace_users
-    if args.hashtag_symbol and replace_hashtags:
-        replacements['hashtag'] = args.hashtag_symbol 
     if args.langid_min_prob:
         langid_min_prob = args.langid_min_prob
 
@@ -114,8 +103,7 @@ def main():
                    
             
             preprocess_tweet_file(input_file, output_file, min_tokens, 
-                                  max_num_urls, max_num_users, replace_hashtags, 
-                                  replace_users, replacements)
+                                  max_num_urls, max_num_users, replacements)
 
         else:      
             # Preprocess Text  
@@ -123,8 +111,7 @@ def main():
             output_file = 'tweets.pp.' + lang_code + '.json.gz' 
             output_file = os.path.join(tweets_path, output_file) 
             preprocess_tweet_file(input_file, output_file, min_tokens, 
-                                  max_num_urls, max_num_users, replace_hashtags, 
-                                  replace_users, replacements)
+                                  max_num_urls, max_num_users, replacements)
 
         
         

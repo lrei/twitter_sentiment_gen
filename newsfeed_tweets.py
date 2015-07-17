@@ -41,15 +41,18 @@ def load_tweets(file_path, open_function=open, dest_path=None):
             tweets = [x for x in tweets if u'lang' in x and u'text' in x]
 
             # remove other properties for the sake of disk space
-            tweets = [{u'text': t[u'text'], u'lang': t[u'lang'], 
-                       u'entities':t[u'entities'], u'id':t['id_str']} for t in tweets]
+            tweets = [{u'text': t['text'], u'lang': t['lang'], 
+                       u'created_at': t['created_at'], 
+                       u'entities':t['entities'], u'id':t['id_str']} 
+                      for t in tweets]
 
             # remove newlines, strip from text
             for t in tweets:
-                t[u'text'] = t[u'text'].replace(u'\n', u' ').strip()
+                t[
+                'text'] = t['text'].replace(u'\n', u' ').strip()
 
             # make sure there are no empty tweets
-            tweets = [x for x in tweets if x[u'text']]
+            tweets = [x for x in tweets if x['text']]
         
         if not tweets:
             return
@@ -67,8 +70,7 @@ def load_tweets(file_path, open_function=open, dest_path=None):
     try:
         with gzip.open(write_file, 'wa') as destination:        
             for tweet in tweets:
-                tweet_string = json.dumps(tweet) + u'\n'
-                tweet_string = tweet_string.encode('utf8')
+                tweet_string = json.dumps(tweet) + '\n'
                 destination.write(tweet_string)
     except:
         print('Failed to write %s' % write_file)
