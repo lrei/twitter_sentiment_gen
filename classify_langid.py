@@ -11,6 +11,7 @@ import multiprocessing
 import langid
 import argparse
 from filter_lang import NUM_PROCS, QUEUE_MAX_SIZE
+import sys
 
 
 
@@ -79,7 +80,7 @@ def writer(q, outfile, n_readers):
                destination.write(tweet)
                counter += 1
                if counter % 2*QUEUE_MAX_SIZE == 0:
-                   print('total calssified lines = %dk' % (int(counter / 1000)))
+                   print('total classified lines = %dk' % (int(counter / 1000)))
 
 
 def reader(q, infile, n_workers):
@@ -124,26 +125,36 @@ def filter_langid(tweet_file, outfile, replacements, lang=u'en', langid_min_prob
            
     
 def main():
-    lang_code = u'en'
+    lang_codes = [u'en']
     langid_min_prob = 0.8
     replacements = {'user': 'TUSERUSER', 'url': 'TURLURL', 'hashtag': 'THASHTAG', 
-                    'symbol': 'TSYMBOL'}
+                    'symbol': 'TSYMBOL'} #also in tweet_text and sentiment_gen
     
     
     parser = argparse.ArgumentParser()
-    parser.add_argument('tweet_infile')
-    parser.add_argument('dest_file')
-    parser.add_argument('-lc', '--lang_code')
+    parser.add_argument('tweet_infiles', help='input files comma seperated')
+    parser.add_argument('dest_files', help='output files comma seperated')
+    parser.add_argument('-lc', '--lang_codes')
     parser.add_argument('-p', '---langid_min_prob', type=float, help='outputs only tweets that have langid_min_prob or higher probability')
     parser.add_argument('-s', '--hashtag_symbol', help='symbol with which hashtags are replaced (needed to remove from text when using classify function)')
  
     args = parser.parse_args()
 
     
-    tweet_file = args.tweet_infile
-    dest_file = args.dest_file
-    if args.lang_code:
-        lang_code = args.lang_code
+    tweet_files = args.tweet_infiles.split(',')
+    dest_files = args.dest_files.split(',')
+    if args.lang_codes:
+        lang_codes = unicode(args.lang_codes).split(',')
+
+    
+    if not len(tweet_files) == len(dest_files):
+        print('tweet_files and dest_files are different sizes')
+        sys.exit(0)
+    
+    
+    if not len(dest_files) == len(lang_codes):
+        print('different number of files and language codes')
+        sys.exit(0)
     
     if args.langid_min_prob:
         langid_min_prob = args.langid_min_prob
@@ -151,8 +162,11 @@ def main():
     #update hashtag symbol 
     if args.hashtag_symbol:
         replacements['hashtag'] = args.hashtag_symbol
+       
         
-    filter_langid(tweet_file, dest_file, replacements, lang_code, langid_min_prob)
+         
+    for tweet_file, dest_file, lang_code in zip(tweet_files, dest_files, lang_codes):         
+        filter_langid(tweet_file, dest_file, replacements, lang_code, langid_min_prob)
        
    
 if __name__ == '__main__':
