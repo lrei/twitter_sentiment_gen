@@ -1,9 +1,6 @@
 """
-Reads a Line Delimited JSON file containing tweets.
-Tweets in file should be preprocessed.
-
-Outputs only those with the selected language probability higher than
-'langid_min_prob'.
+Reads a Line Delimited JSON file containing tweets. Tweets in file should be preprocessed.
+Outputs only those with the selected language probability higher than 'langid_min_prob'.
 """
 
 
@@ -12,52 +9,28 @@ import json
 import multiprocessing
 import argparse
 import sys
-import langid
+import re
+import twokenize
 from filter_lang import NUM_PROCS, QUEUE_MAX_SIZE
 
 
-def filter_classify_lang_line(line, lang, langid_min_prob, replacements):
-    try:
-        tweet = json.loads(line)
-    except:
-        return None
-
-    if tweet is None:
-        return None
-
-    tokens = tweet['text'].split()
-
-    list_replacements = replacements.values()
-    tokens = [x for x in tokens if x not in list_replacements
-              and x.isalpha() and x.lower() != u'rt']
-
-    if not tokens:
-        return  None
-
-    text = u' '.join(tokens)
-
-    # Check if identified language is the expected language
-    lid, prob = langid.classify(text)  # without properties
-    if lid != lang:
-        return None
-
-    # Filter based on langid minimum probability
-    if prob < langid_min_prob:
-        return None
-
-    return tweet
+re_tok = re.compile(r'\w+|[^\w\s]+', re.UNICODE)
 
 
-def worker(q, writeq, lang, langid_min_prob, replacements):
+def word_tokenize(text):
+    ''' Simple tokenization function: breaks text on regex word boundaries '''
+    return u' '.join(re_tok.findall(text))
+
+
+def worker(q, writeq, tokenize):
     while True:
-        entry = q.get(block=True)
-        if type(entry) == int:
-            if entry < 0:
+        tweet = q.get(block=True)
+        if type(tweet) == int:
+            if tweet < 0:
                 break
 
-        tweet = filter_classify_lang_line(entry, lang, langid_min_prob,
-                                          replacements)
-        if tweet is not None:
+        tweet['text'] = tokenize(tweet['text'])
+        if tweet['text']:
             tweet_string = json.dumps(tweet) + '\n'
             writeq.put(tweet_string)
 
@@ -91,7 +64,7 @@ def reader(q, infile, n_workers):
         q.put(-1)
 
 
-def filter_langid(tweet_file, outfile, replacements, lang, langid_min_prob):
+def tokenize_file(tweet_file, outfile, tokenize_function):
     #
     # Filter based on language using langid
     #
@@ -106,9 +79,8 @@ def filter_langid(tweet_file, outfile, replacements, lang, langid_min_prob):
     procs.append(proc)
 
     for i in xrange(NUM_PROCS):
-        proc = multiprocessing.Process(target=worker, args=(workq, writeq, lang,
-                                                            langid_min_prob,
-                                                            replacements))
+        proc = multiprocessing.Process(target=worker, args=(workq, writeq,
+                                                            tokenize_function))
         proc.start()
         procs.append(proc)
 
@@ -121,17 +93,11 @@ def filter_langid(tweet_file, outfile, replacements, lang, langid_min_prob):
 
 
 def main():
-    lang_codes = ['en']
-    langid_min_prob = 0.8
-    replacements = json.load(open('replacements.json'))
-
     parser = argparse.ArgumentParser()
     parser.add_argument('tweet_infiles', help='input files comma seperated')
     parser.add_argument('dest_files', help='output files comma seperated')
-    parser.add_argument('-lc', '--lang_codes')
-    parser.add_argument('-p', '---langid_min_prob', type=float,
-                        help='outputs only tweets that have langid_min_prob \
-                              or higher probability')
+    parser.add_argument('-s', '--simple', type=bool,
+                        help='selects simple tokenizer instead of twokenizer')
 
     args = parser.parse_args()
 
@@ -148,11 +114,12 @@ def main():
         print('different number of files and language codes')
         sys.exit(0)
 
-    if args.langid_min_prob:
-        langid_min_prob = args.langid_min_prob
+    tokenize_function = twokenize.tokenize
+    if args.simple:
+        tokenize_function = word_tokenize
 
     for source, dest, lang in zip(tweet_files, dest_files, lang_codes):
-        filter_langid(source, dest, replacements, lang, langid_min_prob)
+        tokenize_file(source, dest, tokenize_function)
 
 
 if __name__ == '__main__':
