@@ -264,7 +264,8 @@ def tokenize2(text):
             if matching is not None:
                 ntoks.extend(list(matching.groups()))
         else:
-            ntoks.extend(tok)
+
+            ntoks.extend([tok])
 
     return ntoks
 
