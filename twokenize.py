@@ -262,7 +262,7 @@ def tokenize2(text):
         if '\'' in token:
             ntoks.extend(list(ApWords.match(token).groups()))
         else:
-            ntoks.extend(token)
+            ntoks.extend([token])
 
     return ntoks
 
