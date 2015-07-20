@@ -66,7 +66,7 @@ def worker(q, writeq, lang, langid_min_prob, replacements):
 
 def writer(q, outfile, n_readers):
     counter = 0
-    with gzip.open(outfile, 'a') as destination:
+    with gzip.open(outfile, 'w') as destination:
         while True:
             tweet = q.get(block=True)
             if type(tweet) == int:
@@ -77,7 +77,7 @@ def writer(q, outfile, n_readers):
             else:
                 destination.write(tweet)
                 counter += 1
-                if counter % 2 * QUEUE_MAX_SIZE == 0:
+                if counter % (2 * QUEUE_MAX_SIZE) == 0:
                     print('total classified lines = %dk' % (int(counter / 1000)))
 
 
@@ -122,13 +122,13 @@ def filter_langid(tweet_file, outfile, replacements, lang, langid_min_prob):
 
 def main():
     lang_codes = ['en']
-    langid_min_prob = 0.8
+    langid_min_prob = 0.7
     replacements = json.load(open('replacements.json'))
 
     parser = argparse.ArgumentParser()
     parser.add_argument('tweet_infiles', help='input files comma seperated')
     parser.add_argument('dest_files', help='output files comma seperated')
-    parser.add_argument('-lc', '--lang_codes')
+    parser.add_argument('-l', '--lang_codes')
     parser.add_argument('-p', '---langid_min_prob', type=float,
                         help='outputs only tweets that have langid_min_prob \
                               or higher probability')

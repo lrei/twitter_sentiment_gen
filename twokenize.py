@@ -22,6 +22,9 @@ disabled a few of the protected regex since this version is meant to be used
 with data directly from twitter - meaning URLs and @mentions can be precisely
 isolated from the entities property.
 
+Added twokenize2() to break up words with \' - convenient for non-english
+(e.g. italian).
+
 Luis Rei, luis.rei@ijs.si, July 2015
 """
 
@@ -30,13 +33,18 @@ from __future__ import print_function
 import operator
 import re
 
+
 def regex_or(*items):
     return '(?:' + '|'.join(items) + ')'
+
 
 Whitespace = re.compile(u"[\s\u0020\u00a0\u1680\u180e\u202f\u205f\u3000\u2000-\u200a]+", re.UNICODE)
 
 punctSeq   = r"['\"“”‘’]+|[.?!,…]+|[:;]+"	#'anthem'. => ' anthem ' .
 entity     = r"&(?:amp|lt|gt|quot);"
+
+# don't it's a trap l'app - words separated by apostrophe
+ApWords = re.compile(r"(\w+)(')(\w+)", re.UNICODE)
 
 # Abbreviations
 boundaryNotDot = regex_or("$", r"\s", r"[“\"?!,:;]", entity)
@@ -237,10 +245,25 @@ def addAllnonempty(master, smaller):
             master.append(strim)
     return master
 
+
 # "foo   bar " => "foo bar"
 def squeezeWhitespace(input):
     return Whitespace.sub(" ", input).strip()
 
-# Assume 'text' has no HTML escaping.
+
 def tokenize(text):
     return simpleTokenize(squeezeWhitespace(text))
+
+
+def tokenize2(text):
+    tokens = simpleTokenize(squeezeWhitespace(text))
+    ntoks = []
+    for tok in token:
+        if '\'' in token:
+            ntoks.extend(list(ApWords.match(token).groups()))
+        else:
+            ntoks.extend(token)
+
+    return ntoks
+
+

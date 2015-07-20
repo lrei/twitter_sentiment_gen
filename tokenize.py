@@ -98,6 +98,8 @@ def main():
     parser.add_argument('dest_files', help='output files comma seperated')
     parser.add_argument('-s', '--simple', type=bool,
                         help='selects simple tokenizer instead of twokenizer')
+    parser.add_argument('-t', '--twokenizer', type=bool,
+                        help='twokenizer that does not break apostroph words')
 
     args = parser.parse_args()
 
@@ -114,11 +116,13 @@ def main():
         print('different number of files and language codes')
         sys.exit(0)
 
-    tokenize_function = twokenize.tokenize
+    tokenize_function = twokenize.tokenize2
     if args.simple:
         tokenize_function = word_tokenize
+    if args.twokenize:
+        tokenize_function = twokenize.tokenize
 
-    for source, dest, lang in zip(tweet_files, dest_files, lang_codes):
+    for source, dest, lang in zip(tweet_files, dest_files):
         tokenize_file(source, dest, tokenize_function)
 
 
