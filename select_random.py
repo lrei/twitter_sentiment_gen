@@ -60,3 +60,6 @@ def main():
 
     for source, dest in zip(tweet_files, dest_files):
         select_nrandom(source, dest, n)
+        
+if __name__ == '__main__':
+    main()

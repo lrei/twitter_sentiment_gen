@@ -12,6 +12,7 @@ import sys
 import re
 import twokenize
 from filter_lang import NUM_PROCS, QUEUE_MAX_SIZE
+import time
 
 
 re_tok = re.compile(r'\w+|[^\w\s]+', re.UNICODE)
@@ -28,6 +29,11 @@ def worker(q, writeq, tokenize):
         if type(tweet) == int:
             if tweet < 0:
                 break
+
+        try:
+            tweet = json.loads(tweet)
+        except:
+            continue
 
         tweet['text'] = tokenize(tweet['text'])
         if tweet['text']:
@@ -51,7 +57,7 @@ def writer(q, outfile, n_readers):
                 destination.write(tweet)
                 counter += 1
                 if counter % 2 * QUEUE_MAX_SIZE == 0:
-                    print('total classified lines = %dk' % (int(counter / 1000)))
+                    print('total tokenized lines = %dk' % (int(counter / 1000)))
 
 
 def reader(q, infile, n_workers):
@@ -89,6 +95,8 @@ def tokenize_file(tweet_file, outfile, tokenize_function):
     proc.start()
     procs.append(proc)
     # wait for processes to finish
+    print('waiting processes')
+    time.sleep(1)
     [proc.join() for proc in procs]
 
 
@@ -98,22 +106,16 @@ def main():
     parser.add_argument('dest_files', help='output files comma seperated')
     parser.add_argument('-s', '--simple', type=bool,
                         help='selects simple tokenizer instead of twokenizer')
-    parser.add_argument('-t', '--twokenizer', type=bool,
+    parser.add_argument('-t', '--twokenize', type=bool,
                         help='twokenizer that does not break apostroph words')
 
     args = parser.parse_args()
 
     tweet_files = args.tweet_infiles.split(',')
     dest_files = args.dest_files.split(',')
-    if args.lang_codes:
-        lang_codes = args.lang_codes.split(',')
-
+    
     if not len(tweet_files) == len(dest_files):
         print('tweet_files and dest_files are different sizes')
-        sys.exit(0)
-
-    if not len(dest_files) == len(lang_codes):
-        print('different number of files and language codes')
         sys.exit(0)
 
     tokenize_function = twokenize.tokenize2
@@ -122,7 +124,7 @@ def main():
     if args.twokenize:
         tokenize_function = twokenize.tokenize
 
-    for source, dest, lang in zip(tweet_files, dest_files):
+    for source, dest in zip(tweet_files, dest_files):
         tokenize_file(source, dest, tokenize_function)
 
 

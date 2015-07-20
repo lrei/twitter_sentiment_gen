@@ -3,13 +3,12 @@ Tweet text preprocessing module, processes .json.gz files
 '''
 
 from __future__ import print_function
-import re
-import multiprocessing
-import gzip
 import json
 import argparse
-from filter_lang import QUEUE_MAX_SIZE, NUM_PROCS
 import sys
+from functools import partial
+from MultiprocessFiles import MultiprocessFiles
+
 
 
 def update_indices(list_of_indices, delta, start_index):
@@ -167,79 +166,6 @@ def preprocess_tweet(min_tokens, max_num_urls, max_num_users, replacements,
     return tweet
 
 
-def worker(q, writeq, min_tokens, max_num_urls, max_num_users, replacements):
-    while True:
-        entry = q.get(block=True)
-        if type(entry) == int:
-            if entry < 0:
-                break
-
-        # process tweet
-        tweet = preprocess_tweet(min_tokens, max_num_urls, max_num_users, replacements, entry)
-        if tweet is not None:
-            tweet_string = json.dumps(tweet) + '\n'
-            writeq.put(tweet_string)
-
-    # exit
-    writeq.put(-1)
-
-
-def writer(q, outfile, n_readers):
-    counter = 0
-    with gzip.open(outfile, 'a') as destination:
-        while True:
-            tweet = q.get(block=True)
-            if type(tweet) == int:
-                if tweet == -1:
-                    n_readers = n_readers - 1
-                    if n_readers == 0:
-                        break
-            else:
-                destination.write(tweet)
-                counter += 1
-                if counter % (2 * QUEUE_MAX_SIZE) == 0:
-                    print('total processed lines = %dk' % (int(counter / 1000)))
-
-
-def reader(q, infile, n_workers):
-    with gzip.open(infile, 'r') as source:
-        for line in source:
-            # add to queue
-            q.put(line)
-
-    for ii in range(n_workers):
-        q.put(-1)
-
-
-def preprocess_tweet_file(input_fname, output_fname, min_tokens, max_num_urls,
-                          max_num_users, replacements):
-    ''' Preprocess an entire file '''
-
-    workq = multiprocessing.Queue(QUEUE_MAX_SIZE)
-    writeq = multiprocessing.Queue()
-
-    # start procs
-    procs = []
-    proc = multiprocessing.Process(target=reader,
-                                   args=(workq, input_fname, NUM_PROCS))
-    proc.start()
-    procs.append(proc)
-
-    for i in xrange(NUM_PROCS):
-        proc = multiprocessing.Process(target=worker,
-                                       args=(workq, writeq, min_tokens,
-                                             max_num_urls, max_num_users,
-                                             replacements))
-        proc.start()
-        procs.append(proc)
-
-    proc = multiprocessing.Process(target=writer,
-                                   args=(writeq, output_fname, NUM_PROCS))
-    proc.start()
-    procs.append(proc)
-    # wait for processes to finish
-    [proc.join() for proc in procs]
-
 
 def main():
     min_tokens = 5  # default parameters
@@ -271,10 +197,14 @@ def main():
         print('Input files and output_files do not match in size')
         sys.exit(0)
 
-    for infile, outfile in zip(infiles, outfiles):
-        preprocess_tweet_file(infile, outfile, min_tokens, max_num_urls,
-                              max_num_users, replacements)
 
 
+    func = partial(preprocess_tweet, min_tokens, 
+                       max_num_urls, max_num_users, replacements)
+    for infile, outfile in zip(infiles, outfiles):      
+        multiprocess = MultiprocessFiles(infile, outfile, func, num_procs=0, queue_size=200000)
+        multiprocess.run()
+        
+       
 if __name__ == '__main__':
     main()

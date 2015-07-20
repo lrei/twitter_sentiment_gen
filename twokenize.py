@@ -258,11 +258,13 @@ def tokenize(text):
 def tokenize2(text):
     tokens = simpleTokenize(squeezeWhitespace(text))
     ntoks = []
-    for tok in token:
-        if '\'' in token:
-            ntoks.extend(list(ApWords.match(token).groups()))
+    for tok in tokens:
+        if '\'' in tok:
+            matching = ApWords.match(tok)
+            if matching is not None:
+                ntoks.extend(list(matching.groups()))
         else:
-            ntoks.extend(token)
+            ntoks.extend(tok)
 
     return ntoks
 

@@ -11,19 +11,13 @@ from __future__ import print_function
 from __future__ import division
 import sys
 import json
-import gzip
-import multiprocessing
-import time
 import argparse
+from MultiprocessFiles import MultiprocessFiles
+from functools import partial
 
 
 
-# MULTIPROCESSING
-NUM_PROCS = multiprocessing.cpu_count() - 2
-QUEUE_MAX_SIZE = NUM_PROCS * 200000
-
-
-def filter_line(tweet_line, lang):
+def filter_line(lang, tweet_line):
     """
     returns tweet if it is in one language (lang)
     """
@@ -54,90 +48,6 @@ def filter_line(tweet_line, lang):
     return ntweet
 
 
-def worker(q, writeq, lang):
-    while True:
-        entry = q.get(block=True)
-        if type(entry) == int:
-            if entry < 0:
-                break
-                
-        # process line
-        tweet = filter_line(entry, lang)
-        if tweet is not None:
-            tweet_string = json.dumps(tweet)  + '\n'
-            writeq.put(tweet_string)
-            
-    # exit
-    writeq.put(-1)
-
-
-
-        
-        
-def writer(q, outfile, n_readers):
-    start_time = time.time()
-    counter = 0
-    with gzip.open(outfile, 'a') as destination:
-        while True:
-            tweet = q.get(block=True)
-            if type(tweet) == int:
-                if tweet == -1:
-                    n_readers = n_readers -1
-                    if n_readers == 0:
-                        break
-            else:
-               destination.write(tweet)
-               counter += 1
-               if counter % 2*QUEUE_MAX_SIZE == 0:
-                   end_time = time.time()
-                   processed_per_second = (counter / (end_time - start_time)) / 1000
-                   print('total processed lines = %dk' % (int(counter / 1000)))
-                   print('processed lines per second = %dk' % int(processed_per_second))
-                   
-
-
-def reader(q, infile, n_workers):
-    with gzip.open(infile, 'r') as source:
-        for line in source:
-            # add to queue      
-            q.put(line)
-            
-    for ii in range(n_workers):
-        q.put(-1)
-
-
-def filter_tweets(infile, outfile, lang):
-    """
-    todo this later
-    """ 
-    workq = multiprocessing.Queue(QUEUE_MAX_SIZE)
-    writeq = multiprocessing.Queue()
-    
-        
-    # start procs
-    procs = []
-    proc = multiprocessing.Process(target=reader,
-                                    args=(workq, infile, NUM_PROCS))
-    proc.start()
-    procs.append(proc)
-    
-    
-    for i in xrange(NUM_PROCS):
-        proc = multiprocessing.Process(target=worker,
-                                        args=(workq, writeq, lang))
-        proc.start()
-        procs.append(proc)
-
-    proc = multiprocessing.Process(target=writer,
-                                   args=(writeq,outfile, NUM_PROCS))
-    proc.start()
-    procs.append(proc)
-    # wait for processes to finish
-    [proc.join() for proc in procs]
-        
-            
-
-
 def main():
     '''main'''
     lang_codes = ['en']
@@ -159,11 +69,13 @@ def main():
     if not len(outfiles) == len(lang_codes):
         print('Output files and language codes do not match in size')
         sys.exit(0)
-                
-    print('using %d procs' % NUM_PROCS)
+    
+    
     for lang_code, outfile in zip(lang_codes, outfiles):
+        func = partial(filter_line, lang_code)
         print('Using %s as language code' % lang_code)
-        filter_tweets(infile, outfile, lang=lang_code)
+        multiprocess = MultiprocessFiles(infile, outfile, func, num_procs=0, queue_size=200000)
+        multiprocess.run()
     
 
 if __name__ == '__main__':
