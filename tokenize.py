@@ -11,10 +11,10 @@ import argparse
 import sys
 import re
 import twokenize
-from filter_lang import NUM_PROCS, QUEUE_MAX_SIZE
 import time
 
 
+QUEUE_MAX_SIZE = 20000
 re_tok = re.compile(r'\w+|[^\w\s]+', re.UNICODE)
 
 
@@ -35,7 +35,7 @@ def worker(q, writeq, tokenize):
         except:
             continue
 
-        tweet['text'] = tokenize(tweet['text'])
+        tweet['text'] = u" ".join(tokenize(tweet['text']))
         if tweet['text']:
             tweet_string = json.dumps(tweet) + '\n'
             writeq.put(tweet_string)
@@ -74,6 +74,7 @@ def tokenize_file(tweet_file, outfile, tokenize_function):
     #
     # Filter based on language using langid
     #
+    NUM_PROCS = multiprocessing.cpu_count()
     workq = multiprocessing.Queue(QUEUE_MAX_SIZE)
     writeq = multiprocessing.Queue()
 
