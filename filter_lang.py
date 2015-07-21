@@ -55,7 +55,9 @@ def filter_line(lang, tweet_line):
         ntweet['entities'] = tweet['entities']
     if 'id' in tweet:
         ntweet['id'] = tweet['id']
-
+    if 'created_at' in tweet:
+        ntweet['created_at'] = tweet['created_at']
+        
     return ntweet
 
 
