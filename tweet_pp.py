@@ -1,17 +1,20 @@
-'''
-Tweet text preprocessing module, processes .json.gz files
-'''
+"""Tweet text preprocessing module, processes Line Delimited JSON files.
+
+Reads Line Delimited JSON file and and processes tweet's text. In text it
+replaces entities specified in replacements.json.
+"""
 
 from __future__ import print_function
 import json
 import argparse
 import sys
 from functools import partial
+
 from MultiprocessFiles import MultiprocessFiles
 
 
-
 def update_indices(list_of_indices, delta, start_index):
+    """Updates indices in list by delta"""
     if list_of_indices is None:
         return
 
@@ -22,13 +25,17 @@ def update_indices(list_of_indices, delta, start_index):
         element[1] += delta
 
 
-def replace_entity(entity, tweet, indices_list, list1, list2, list3, list4, replacements):
+def replace_entity(entity, tweet, indices_list, list1, list2, list3, list4,
+                   replacements):
+    """Replaces entity in tweet based on indices_list
+
+    Other lists are just updated so they correspond with new processed text.
+    """
     for index_list in indices_list:
         username_length = index_list[1] - index_list[0]
         replacement_word_length = len(replacements[entity])
         tweet['text'] = (tweet['text'][:index_list[0]] + replacements[entity] +
                          tweet['text'][index_list[1]:])
-
         delta = replacement_word_length - username_length
         update_indices(list1, delta, index_list[0])
         update_indices(list2, delta, index_list[0])
@@ -38,7 +45,7 @@ def replace_entity(entity, tweet, indices_list, list1, list2, list3, list4, repl
 
 
 def replace_entities(tweet, replacements):
-    ''' Replacement for twitter @user'''
+    '''Replaces entities specified in replacements for one tweet's text'''
     if 'entities' not in tweet:
         return None
 
@@ -67,8 +74,7 @@ def replace_entities(tweet, replacements):
     else:
         list_of_media = None
 
-    # update indices when replacing entities
-    # check existance
+    # update indices when replacing entities and check existance
     if list_of_users is not None:
         list_of_users_indices = [user['indices'] for user in list_of_users]
     else:
@@ -80,12 +86,14 @@ def replace_entities(tweet, replacements):
         list_of_urls_indices = None
 
     if list_of_hashtags is not None:
-        list_of_hashtags_indices = [hashtag['indices'] for hashtag in list_of_hashtags]
+        list_of_hashtags_indices = [hashtag['indices'] for hashtag in
+                                    list_of_hashtags]
     else:
         list_of_hashtags_indices = None
 
     if list_of_symbols is not None:
-        list_of_symbols_indices = [symbol['indices'] for symbol in list_of_symbols]
+        list_of_symbols_indices = [symbol['indices'] for symbol in
+                                   list_of_symbols]
     else:
         list_of_symbols_indices = None
 
@@ -126,7 +134,7 @@ def replace_entities(tweet, replacements):
                        list_of_urls_indices, list_of_hashtags_indices,
                        replacements)
 
-    # remove property entities, include id
+    # remove field entities
     ntweet = {u'text': tweet['text'], u'lang': tweet['lang'],
               u'id': tweet['id']}
     if 'created_at' in tweet:
@@ -137,7 +145,7 @@ def replace_entities(tweet, replacements):
 
 def preprocess_tweet(min_tokens, max_num_urls, max_num_users, replacements,
                      tweet_line):
-    ''' Preprocess a single tweet '''
+    """ Preprocess a single tweet """
     try:
         tweet = json.loads(tweet_line)
     except:
@@ -166,9 +174,10 @@ def preprocess_tweet(min_tokens, max_num_urls, max_num_users, replacements,
     return tweet
 
 
-
 def main():
-    min_tokens = 5  # default parameters
+    """ main """
+    # default parameters
+    min_tokens = 5
     max_num_urls = 2
     max_num_users = 3
     replacements = json.load(open('replacements.json'))
@@ -197,14 +206,13 @@ def main():
         print('Input files and output_files do not match in size')
         sys.exit(0)
 
-
-
-    func = partial(preprocess_tweet, min_tokens, 
-                       max_num_urls, max_num_users, replacements)
-    for infile, outfile in zip(infiles, outfiles):      
-        multiprocess = MultiprocessFiles(infile, outfile, func, num_procs=0, queue_size=200000)
+    func = partial(preprocess_tweet, min_tokens,
+                   max_num_urls, max_num_users, replacements)
+    for infile, outfile in zip(infiles, outfiles):
+        multiprocess = MultiprocessFiles(infile, outfile, func, num_procs=0,
+                                         queue_size=200000)
         multiprocess.run()
-        
-       
+
+
 if __name__ == '__main__':
     main()

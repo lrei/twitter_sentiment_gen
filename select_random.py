@@ -38,6 +38,7 @@ def select_nrandom(infile, outfile, n):
 
 
 def main():
+    """ main """
     n = 10000
 
     parser = argparse.ArgumentParser()
@@ -45,7 +46,6 @@ def main():
     parser.add_argument('dest_files', help='output files comma seperated')
     parser.add_argument('-n', '--number', type=int,
                         help='selects simple tokenizer instead of twokenizer')
-
     args = parser.parse_args()
 
     tweet_files = args.tweet_infiles.split(',')
@@ -60,6 +60,6 @@ def main():
 
     for source, dest in zip(tweet_files, dest_files):
         select_nrandom(source, dest, n)
-        
+
 if __name__ == '__main__':
     main()

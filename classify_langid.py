@@ -1,22 +1,35 @@
-"""
+"""Uses langid on tweets to check if languages match.
+
 Reads a Line Delimited JSON file containing tweets.
 Tweets in file should be preprocessed.
-
 Outputs only those with the selected language probability higher than
 'langid_min_prob'.
 """
 
-
-import gzip
+from __future__ import print_function
 import json
-import multiprocessing
 import argparse
 import sys
+from functools import partial
+
 import langid
-from filter_lang import NUM_PROCS, QUEUE_MAX_SIZE
+
+from MultiprocessFiles import MultiprocessFiles
 
 
-def filter_classify_lang_line(line, lang, langid_min_prob, replacements):
+def filter_classify_lang_line(lang, langid_min_prob, replacements, line):
+    """ With langid calculates probability of text being in which language.
+
+    Args:
+        line: JSON object
+            represents one tweet
+        replacements: dictionary
+            entities to be replaced
+
+    Returns:
+        only tweets with the selected language probability higher than
+        langid_min_prob.
+    """
     try:
         tweet = json.loads(line)
     except:
@@ -26,18 +39,17 @@ def filter_classify_lang_line(line, lang, langid_min_prob, replacements):
         return None
 
     tokens = tweet['text'].split()
-
     list_replacements = replacements.values()
     tokens = [x for x in tokens if x not in list_replacements
               and x.isalpha() and x.lower() != u'rt']
 
     if not tokens:
-        return  None
+        return None
 
     text = u' '.join(tokens)
 
     # Check if identified language is the expected language
-    lid, prob = langid.classify(text)  # without properties
+    lid, prob = langid.classify(text)  # text without properties
     if lid != lang:
         return None
 
@@ -48,79 +60,8 @@ def filter_classify_lang_line(line, lang, langid_min_prob, replacements):
     return tweet
 
 
-def worker(q, writeq, lang, langid_min_prob, replacements):
-    while True:
-        entry = q.get(block=True)
-        if type(entry) == int:
-            if entry < 0:
-                break
-
-        tweet = filter_classify_lang_line(entry, lang, langid_min_prob,
-                                          replacements)
-        if tweet is not None:
-            tweet_string = json.dumps(tweet) + '\n'
-            writeq.put(tweet_string)
-
-    writeq.put(-1)
-
-
-def writer(q, outfile, n_readers):
-    counter = 0
-    with gzip.open(outfile, 'w') as destination:
-        while True:
-            tweet = q.get(block=True)
-            if type(tweet) == int:
-                if tweet == -1:
-                    n_readers = n_readers - 1
-                    if n_readers == 0:
-                        break
-            else:
-                destination.write(tweet)
-                counter += 1
-                if counter % (2 * QUEUE_MAX_SIZE) == 0:
-                    print('total classified lines = %dk' % (int(counter / 1000)))
-
-
-def reader(q, infile, n_workers):
-    with gzip.open(infile, 'r') as source:
-        for line in source:
-            # add to queue
-            q.put(line)
-
-    for ii in range(n_workers):
-        q.put(-1)
-
-
-def filter_langid(tweet_file, outfile, replacements, lang, langid_min_prob):
-    #
-    # Filter based on language using langid
-    #
-    workq = multiprocessing.Queue(QUEUE_MAX_SIZE)
-    writeq = multiprocessing.Queue()
-
-    # start procs
-    procs = []
-    proc = multiprocessing.Process(target=reader,
-                                   args=(workq, tweet_file, NUM_PROCS))
-    proc.start()
-    procs.append(proc)
-
-    for i in xrange(NUM_PROCS):
-        proc = multiprocessing.Process(target=worker, args=(workq, writeq, lang,
-                                                            langid_min_prob,
-                                                            replacements))
-        proc.start()
-        procs.append(proc)
-
-    proc = multiprocessing.Process(target=writer,
-                                   args=(writeq, outfile, NUM_PROCS))
-    proc.start()
-    procs.append(proc)
-    # wait for processes to finish
-    [proc.join() for proc in procs]
-
-
 def main():
+    """ main """
     lang_codes = ['en']
     langid_min_prob = 0.7
     replacements = json.load(open('replacements.json'))
@@ -132,11 +73,11 @@ def main():
     parser.add_argument('-p', '---langid_min_prob', type=float,
                         help='outputs only tweets that have langid_min_prob \
                               or higher probability')
-
     args = parser.parse_args()
 
     tweet_files = args.tweet_infiles.split(',')
     dest_files = args.dest_files.split(',')
+
     if args.lang_codes:
         lang_codes = args.lang_codes.split(',')
 
@@ -152,7 +93,11 @@ def main():
         langid_min_prob = args.langid_min_prob
 
     for source, dest, lang in zip(tweet_files, dest_files, lang_codes):
-        filter_langid(source, dest, replacements, lang, langid_min_prob)
+        func = partial(filter_classify_lang_line, lang, langid_min_prob,
+                       replacements)
+        multiprocess = MultiprocessFiles(source, dest, func, num_procs=0,
+                                         queue_size=200000)
+        multiprocess.run()
 
 
 if __name__ == '__main__':
