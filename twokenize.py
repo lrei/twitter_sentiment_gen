@@ -36,6 +36,7 @@ def regex_or(*items):
     return '(?:' + '|'.join(items) + ')'
 
 
+Contractions = re.compile(u"(?i)(\w+)(n['’′]t|['’′]ve|['’′]ll|['’′]d|['’′]re|['’′]s|['’′]m)$", re.UNICODE)
 Whitespace = re.compile(u"[\s\u0020\u00a0\u1680\u180e\u202f\u205f\u3000\u2000-\u200a]+", re.UNICODE)
 
 punctSeq   = r"['\"“”‘’]+|[.?!,…]+|[:;]+"	#'anthem'. => ' anthem ' .
@@ -217,6 +218,9 @@ def simpleTokenize(text):
         zippedStr = addAllnonempty(zippedStr, splitGoods[i])
         zippedStr = addAllnonempty(zippedStr, bads[i])
     zippedStr = addAllnonempty(zippedStr, splitGoods[len(bads)])
+    
+    
+
 
     # LR: Break appart hash use including hashtags
     # splitStr = []
@@ -225,6 +229,14 @@ def simpleTokenize(text):
     # zippedStr = splitStr
 
     return zippedStr
+
+
+# Final pass tokenization based on special patterns
+def splitToken(token):
+    m = Contractions.search(token)
+    if m:
+        return [m.group(1), m.group(2)]
+    return [token]
 
 
 # '#example' -> ['#', 'example']
@@ -265,3 +277,14 @@ def tokenize2(text):
             ntoks.extend([tok])
             
     return ntoks
+
+def tokenize3(text):
+    tokens = simpleTokenize(squeezeWhitespace(text))
+    # BTO: our POS tagger wants "ur" and "you're" to both be one token.
+    # Uncomment to get "you 're"
+    splitStr = []
+    for tok in tokens:
+        splitStr.extend(splitToken(tok))
+    zippedStr = splitStr
+            
+    return zippedStr

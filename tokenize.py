@@ -54,6 +54,9 @@ def main():
     parser.add_argument('-t', '--twokenize', dest='twokenize',
                         action='store_true',
                         help='twokenizer that does not break apostroph words')
+    parser.add_argument('-t3', '--twokenize', dest='twokenize3',
+                        action='store_true',
+                        help='twokenizer that breaks apostroph words')
 
     args = parser.parse_args()
 
@@ -69,6 +72,8 @@ def main():
         tokenize_function = word_tokenize
     if args.twokenize:
         tokenize_function = twokenize.tokenize
+    if args.twokenize3:
+        tokenize_function = twokenize.tokenize3
 
     func = partial(tokenize_tweet, tokenize_function)
 
