@@ -103,18 +103,18 @@ def main():
         func = partial(filter_line, lang_code)
         outfile = 'tweets.' + lang_code + '.json.gz'
         outfile = os.path.join(tweets_path, outfile)
-        multiprocessFilterLang = MultiprocessFiles(tweets_file, outfile, func,
+        multiprocess_filter_lang = MultiprocessFiles(tweets_file, outfile, func,
                                                    num_procs=0,
                                                    queue_size=200000)
-        multiprocessFilterLang.run()
+        multiprocess_filter_lang.run()
 
         if lowercasing:
             infile = outfile
             outfile = 'tweets.lowercase.' + lang_code + '.json.gz'
             outfile = os.path.join(tweets_path, outfile)
-            lowerCase = MultiprocessFiles(infile, outfile, lower_line,
+            lower_case = MultiprocessFiles(infile, outfile, lower_line,
                                           num_procs=0, queue_size=200000)
-            lowerCase.run()
+            lower_case.run()
 
             # Preprocess Text
             input_file = outfile
