@@ -54,7 +54,7 @@ def main():
     parser.add_argument('-t', '--twokenize', dest='twokenize',
                         action='store_true',
                         help='twokenizer that does not break apostroph words')
-    parser.add_argument('-t3', '--twokenize', dest='twokenize3',
+    parser.add_argument('-tw', '--twokenize3', dest='twokenize3',
                         action='store_true',
                         help='twokenizer that breaks apostroph words')
 
