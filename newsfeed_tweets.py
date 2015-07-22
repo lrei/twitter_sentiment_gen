@@ -24,7 +24,7 @@ import argparse
 def load_tweets(file_path, open_function=open, dest_path=None):
     """Reads a newsfeed.ijs.si gzipped pickle tweet archive.
 
-     Tweet includes text, lang, entities, created_at and tweet id.
+    Tweet includes text, lang, entities, created_at and tweet id.
 
     Args:
         file_path: string which represents the file path.

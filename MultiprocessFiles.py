@@ -88,8 +88,8 @@ class MultiprocessFiles:
                         end_time = time.time()
                         processed_per_second = (counter / (end_time -
                                                 start_time)) / 1000
-                        print('total processed lines = %dk' % (int(counter
-                                                                   / 1000)))
+                        print('total processed lines = %dk' % (int(counter /
+                                                                   1000)))
                         print('processed lines per second = %dk' %
                               int(processed_per_second))
 

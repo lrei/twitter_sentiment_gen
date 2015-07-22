@@ -9,9 +9,7 @@ import random
 
 
 def count_lines(infile):
-    """
-    Count lines in a gzip JSON LD file
-    """
+    """ Count lines in a gzip JSON LD file """
     n_lines = 0
     with gzip.open(infile, 'r') as source:
         for line in source:

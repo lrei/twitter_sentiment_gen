@@ -29,8 +29,6 @@ Luis Rei, luis.rei@ijs.si, July 2015
 """
 
 from __future__ import print_function
-
-import operator
 import re
 
 
@@ -221,10 +219,10 @@ def simpleTokenize(text):
     zippedStr = addAllnonempty(zippedStr, splitGoods[len(bads)])
 
     # LR: Break appart hash use including hashtags
-    splitStr = []
-    for tok in zippedStr:
-        splitStr.extend(splitHash(tok))
-    zippedStr = splitStr
+    # splitStr = []
+    # for tok in zippedStr:
+    #    splitStr.extend(splitHash(tok))
+    # zippedStr = splitStr
 
     return zippedStr
 
@@ -264,9 +262,6 @@ def tokenize2(text):
             if matching is not None:
                 ntoks.extend(list(matching.groups()))
         else:
-
             ntoks.extend([tok])
-
+            
     return ntoks
-
-

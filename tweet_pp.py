@@ -114,15 +114,15 @@ def replace_entities(tweet, replacements):
                        list_of_symbols_indices, list_of_media_indices,
                        replacements)
 
-    if (list_of_hashtags_indices is not None
-            and replacements['hashtag'] is not None):
+    if (list_of_hashtags_indices is not None and
+            replacements['hashtag'] is not None):
         replace_entity('hashtag', tweet, list_of_hashtags_indices,
                        list_of_users_indices, list_of_urls_indices,
                        list_of_symbols_indices, list_of_media_indices,
                        replacements)
 
-    if (list_of_symbols_indices is not None
-            and replacements['symbol'] is not None):
+    if (list_of_symbols_indices is not None and
+            replacements['symbol'] is not None):
         replace_entity('symbol', tweet, list_of_symbols_indices,
                        list_of_users_indices, list_of_urls_indices,
                        list_of_hashtags_indices, list_of_media_indices,
@@ -151,11 +151,11 @@ def preprocess_tweet(min_tokens, max_num_urls, max_num_users, replacements,
     except:
         return None
 
-    #filter based on num of urls
+    # filter based on num of urls
     if len(tweet['entities']['urls']) > max_num_urls:
         return None
 
-    #filter based on num of user mentions
+    # filter based on num of user mentions
     if len(tweet['entities']['user_mentions']) > max_num_users:
         return None
 
@@ -165,8 +165,8 @@ def preprocess_tweet(min_tokens, max_num_urls, max_num_users, replacements,
     # filter based on num of tokens
     tokens = tweet['text'].split()
     list_replacements = replacements.values()
-    tokens = [x for x in tokens if x not in list_replacements
-              and x.isalpha() and x.lower() != u'rt']
+    tokens = [x for x in tokens if x not in list_replacements and
+              x.isalpha() and x.lower() != u'rt']
 
     if len(tokens) < min_tokens:
         return None
@@ -183,8 +183,9 @@ def main():
     replacements = json.load(open('replacements.json'))
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('input_files', help='input files comma seperated')
-    parser.add_argument('output_files', help='output files comma seperated')
+    parser.add_argument('input_files', help='input file paths comma seperated')
+    parser.add_argument('output_files',
+                        help='output file paths comma seperated')
     parser.add_argument('-t', '--min_tokens', type=int)
     parser.add_argument('-url', '--max_urls', type=int)
     parser.add_argument('-u', '--max_users', type=int)

@@ -85,8 +85,8 @@ def main():
         tokenize_function = twokenize.tokenize
 
     # create tmpdir
-    #tmpdir = './tmp'
-    #if not os.path.isdir(tmpdir):
+    # tmpdir = './tmp'
+    # if not os.path.isdir(tmpdir):
     #    os.makedirs(tmpdir)
 
     filename = os.path.basename(tweets_file)
@@ -160,7 +160,7 @@ def main():
                                       queue_size=200000)
         tokenizer.run()
 
-    #@todo remove tmpdir
+    # @todo remove tmpdir
 
 if __name__ == '__main__':
     main()

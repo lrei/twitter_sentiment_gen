@@ -40,8 +40,8 @@ def filter_classify_lang_line(lang, langid_min_prob, replacements, line):
 
     tokens = tweet['text'].split()
     list_replacements = replacements.values()
-    tokens = [x for x in tokens if x not in list_replacements
-              and x.isalpha() and x.lower() != u'rt']
+    tokens = [x for x in tokens if x not in list_replacements and
+              x.isalpha() and x.lower() != u'rt']
 
     if not tokens:
         return None
@@ -67,8 +67,9 @@ def main():
     replacements = json.load(open('replacements.json'))
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('tweet_infiles', help='input files comma seperated')
-    parser.add_argument('dest_files', help='output files comma seperated')
+    parser.add_argument('tweet_infiles',
+                        help='input file paths comma seperated')
+    parser.add_argument('dest_files', help='output file paths comma seperated')
     parser.add_argument('-l', '--lang_codes')
     parser.add_argument('-p', '---langid_min_prob', type=float,
                         help='outputs only tweets that have langid_min_prob \

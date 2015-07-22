@@ -30,7 +30,6 @@ def filter_line(lang, tweet_line):
             represents one tweet
 
     Returns: A dictionary
-
     """
     try:
         tweet = json.loads(tweet_line)
@@ -57,7 +56,7 @@ def filter_line(lang, tweet_line):
         ntweet['id'] = tweet['id']
     if 'created_at' in tweet:
         ntweet['created_at'] = tweet['created_at']
-        
+
     return ntweet
 
 
@@ -68,7 +67,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('input_tweet_file')
     parser.add_argument('output_files',
-                        help='one or more file_names comma_seperated')
+                        help='one or more file paths comma_seperated')
     parser.add_argument('-l', '--lang_codes',
                         help='language codes comma-seperated')
     args = parser.parse_args()
