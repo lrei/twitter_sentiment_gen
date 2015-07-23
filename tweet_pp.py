@@ -32,22 +32,26 @@ def replace_entity(entity, tweet, indices_list, list1, list2, list3, list4,
     Other lists are just updated so they correspond with new processed text.
     """
     for index_list in indices_list:
-        username_length = index_list[1] - index_list[0]
+        if index_list[1] > 140:
+            return None
+        entity_length = index_list[1] - index_list[0]
         replacement_word_length = len(replacements[entity])
         tweet['text'] = (tweet['text'][:index_list[0]] + replacements[entity] +
                          tweet['text'][index_list[1]:])
-        delta = replacement_word_length - username_length
+        delta = replacement_word_length - entity_length
         update_indices(list1, delta, index_list[0])
         update_indices(list2, delta, index_list[0])
         update_indices(list3, delta, index_list[0])
         update_indices(list4, delta, index_list[0])
         update_indices(indices_list, delta, index_list[0])
+    
+    return True
 
 
 def replace_entities(tweet, replacements):
     '''Replaces entities specified in replacements for one tweet's text'''
     if 'entities' not in tweet:
-        return None
+        return tweet
 
     if 'user_mentions' in tweet['entities']:
         list_of_users = tweet['entities']['user_mentions']
@@ -103,36 +107,46 @@ def replace_entities(tweet, replacements):
         list_of_media_indices = None
 
     if list_of_users_indices is not None and replacements['user'] is not None:
-        replace_entity('user', tweet, list_of_users_indices,
-                       list_of_urls_indices, list_of_hashtags_indices,
-                       list_of_symbols_indices, list_of_media_indices,
-                       replacements)
+        ret = replace_entity('user', tweet, list_of_users_indices,
+                             list_of_urls_indices, list_of_hashtags_indices,
+                             list_of_symbols_indices, list_of_media_indices,
+                             replacements)
+        if not ret:
+            return None
 
     if list_of_urls_indices is not None and replacements['url'] is not None:
-        replace_entity('url', tweet, list_of_urls_indices,
-                       list_of_users_indices, list_of_hashtags_indices,
-                       list_of_symbols_indices, list_of_media_indices,
-                       replacements)
+        ret = replace_entity('url', tweet, list_of_urls_indices,
+                             list_of_users_indices, list_of_hashtags_indices,
+                             list_of_symbols_indices, list_of_media_indices,
+                             replacements)
+        if not ret:
+            return None
 
     if (list_of_hashtags_indices is not None and
             replacements['hashtag'] is not None):
-        replace_entity('hashtag', tweet, list_of_hashtags_indices,
-                       list_of_users_indices, list_of_urls_indices,
-                       list_of_symbols_indices, list_of_media_indices,
-                       replacements)
+        ret = replace_entity('hashtag', tweet, list_of_hashtags_indices,
+                             list_of_users_indices, list_of_urls_indices,
+                             list_of_symbols_indices, list_of_media_indices,
+                             replacements)
+        if not ret:
+            return None
 
     if (list_of_symbols_indices is not None and
             replacements['symbol'] is not None):
-        replace_entity('symbol', tweet, list_of_symbols_indices,
-                       list_of_users_indices, list_of_urls_indices,
-                       list_of_hashtags_indices, list_of_media_indices,
-                       replacements)
+        ret = replace_entity('symbol', tweet, list_of_symbols_indices,
+                             list_of_users_indices, list_of_urls_indices,
+                             list_of_hashtags_indices, list_of_media_indices,
+                             replacements)
+        if not ret:
+            return None
 
     if list_of_media_indices is not None and replacements['url'] is not None:
-        replace_entity('url', tweet, list_of_media_indices,
-                       list_of_symbols_indices, list_of_users_indices,
-                       list_of_urls_indices, list_of_hashtags_indices,
-                       replacements)
+        ret = replace_entity('url', tweet, list_of_media_indices,
+                             list_of_symbols_indices, list_of_users_indices,
+                             list_of_urls_indices, list_of_hashtags_indices,
+                             replacements)
+        if not ret:
+            return None
 
     # remove field entities
     ntweet = {u'text': tweet['text'], u'lang': tweet['lang'],
@@ -161,6 +175,8 @@ def preprocess_tweet(min_tokens, max_num_urls, max_num_users, replacements,
 
     # replace entities
     tweet = replace_entities(tweet, replacements)
+    if tweet is None:
+        return None
 
     # filter based on num of tokens
     tokens = tweet['text'].split()
