@@ -57,9 +57,12 @@ def main():
     parser.add_argument('-prob', '--langid_min_prob')
     parser.add_argument('-s', '--simple', dest='simple', action='store_true',
                         help='selects simple tokenizer instead of twokenizer')
-    parser.add_argument('-tw', '--twokenize', dest='twokenize',
+    parser.add_argument('-to', '--twokenize', dest='twokenize',
                         action='store_true',
                         help='twokenizer that does not break apostroph words')
+    parser.add_argument('-tw', '--twokenize3', dest='twokenize3',
+                        action='store_true',
+                        help='twokenizer that breaks apostroph words')
     args = parser.parse_args()
 
     lang_codes = unicode(args.lang_codes).split(',')
@@ -83,7 +86,8 @@ def main():
         tokenize_function = word_tokenize
     if args.twokenize:
         tokenize_function = twokenize.tokenize
-
+    if args.twokenize3:
+        tokenize_function = twokenize.tokenize3
     # create tmpdir
     # tmpdir = './tmp'
     # if not os.path.isdir(tmpdir):
@@ -118,7 +122,7 @@ def main():
 
             # Preprocess Text
             input_file = outfile
-            output_file = 'tweets.pp.' + lang_code + '.json.gz'
+            output_file = 'tweets.' + lang_code + '.pp.json.gz'
             output_file = os.path.join(tweets_path, output_file)
 
             func = partial(preprocess_tweet, min_tokens,
@@ -133,7 +137,7 @@ def main():
         else:
             # Preprocess Text
             input_file = outfile
-            output_file = 'tweets.pp.' + lang_code + '.json.gz'
+            output_file = 'tweets.' + lang_code + '.pp.json.gz'
             output_file = os.path.join(tweets_path, output_file)
             func = partial(preprocess_tweet, min_tokens,
                            max_num_urls, max_num_users, replacements)
@@ -152,14 +156,13 @@ def main():
         classify.run()
 
         source = dest_file
-        dest = 'tweets.' + lang_code + '.tok.json.gz'
+        dest = 'tweets.' + lang_code + '.pp.lid.tok.json.gz'
         dest = os.path.join(tweets_path, dest)
 
         func = partial(tokenize_tweet, tokenize_function)
         tokenizer = MultiprocessFiles(source, dest, func, num_procs=0,
                                       queue_size=200000)
         tokenizer.run()
-
     # @todo remove tmpdir
 
 if __name__ == '__main__':
