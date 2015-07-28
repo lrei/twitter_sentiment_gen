@@ -2,36 +2,46 @@
 Select random lines from a gzipped file and write them to another file
 """
 
+from __future__ import print_function
+
 import sys
 import argparse
 import gzip
 import random
+from progressbar import ProgressBar, Bar, Percentage
 
 
 def count_lines(infile):
     """ Count lines in a gzip JSON LD file """
     n_lines = 0
     with gzip.open(infile, 'r') as source:
-        for line in source:
+        for _ in source:
             n_lines += 1
 
     return n_lines
 
 
 def select_nrandom(infile, outfile, n):
+    """
+    Selects random lines from a file
+    """
     n_lines = count_lines(infile)
     selected_lines = random.sample(range(0, n_lines), n)
     last_line = max(selected_lines)
-
+    pbar = ProgressBar(widgets=[Percentage(), Bar()], maxval=last_line).start()
     counter = 0
     with gzip.open(outfile, 'w') as destination:
         with gzip.open(infile, 'r') as source:
             for line in source:
                 if counter in selected_lines:
-                    destination.write(line + '\n')
+                    destination.write(line)
                 counter += 1
                 if counter > last_line:
+                    pbar.finish()
+                    print()
                     break
+                pbar.update(counter)
+
     return
 
 

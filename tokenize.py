@@ -49,12 +49,15 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('tweet_infiles', help='input files comma seperated')
     parser.add_argument('dest_files', help='output files comma seperated')
+
     parser.add_argument('-s', '--simple', dest='simple', action='store_true',
                         help='selects simple tokenizer instead of twokenizer')
+
     parser.add_argument('-t', '--twokenize', dest='twokenize',
                         action='store_true',
                         help='twokenizer that does not break apostroph words')
-    parser.add_argument('-tw', '--twokenize3', dest='twokenize3',
+
+    parser.add_argument('-a', '--twokenize2', dest='twokenize2',
                         action='store_true',
                         help='twokenizer that breaks apostroph words')
 
@@ -70,10 +73,13 @@ def main():
     tokenize_function = twokenize.tokenize2
     if args.simple:
         tokenize_function = word_tokenize
+        print("Simple Tokenizer")
     if args.twokenize:
         tokenize_function = twokenize.tokenize
-    if args.twokenize3:
-        tokenize_function = twokenize.tokenize3
+        print("Twokenize")
+    if args.twokenize2:
+        tokenize_function = twokenize.tokenize2
+        print("Twokenize 2")
 
     func = partial(tokenize_tweet, tokenize_function)
 

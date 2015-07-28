@@ -164,10 +164,12 @@ offEdge = r"(^|$|:|;|\s|\.|,)"  # colon here gets "(hello):" ==> "( hello ):"
 EdgePunctLeft  = re.compile(offEdge + "("+edgePunct+"+)("+notEdgePunct+")", re.UNICODE)
 EdgePunctRight = re.compile("("+notEdgePunct+")("+edgePunct+"+)" + offEdge, re.UNICODE)
 
+
 def splitEdgePunct(input):
     input = EdgePunctLeft.sub(r"\1\2 \3", input)
     input = EdgePunctRight.sub(r"\1 \2\3", input)
     return input
+
 
 # The main work of tokenizing a tweet.
 def simpleTokenize(text):
@@ -176,7 +178,7 @@ def simpleTokenize(text):
     splitPunctText = splitEdgePunct(text)
 
     textLength = len(splitPunctText)
-    
+
     # BTO: the logic here got quite convoluted via the Scala porting detour
     # It would be good to switch back to a nice simple procedural style like in the Python version
     # ... Scala is such a pain.  Never again.
@@ -218,9 +220,6 @@ def simpleTokenize(text):
         zippedStr = addAllnonempty(zippedStr, splitGoods[i])
         zippedStr = addAllnonempty(zippedStr, bads[i])
     zippedStr = addAllnonempty(zippedStr, splitGoods[len(bads)])
-    
-    
-
 
     # LR: Break appart hash use including hashtags
     # splitStr = []
@@ -266,6 +265,9 @@ def tokenize(text):
 
 
 def tokenize2(text):
+    """Breaks apostrophes:
+        l'intervista -> ["l", "'", "intervista"]
+        """
     tokens = simpleTokenize(squeezeWhitespace(text))
     ntoks = []
     for tok in tokens:
@@ -275,10 +277,11 @@ def tokenize2(text):
                 ntoks.extend(list(matching.groups()))
         else:
             ntoks.extend([tok])
-            
     return ntoks
 
+
 def tokenize3(text):
+    """ keeps contractions """
     tokens = simpleTokenize(squeezeWhitespace(text))
     # BTO: our POS tagger wants "ur" and "you're" to both be one token.
     # Uncomment to get "you 're"
