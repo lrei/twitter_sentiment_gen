@@ -17,13 +17,12 @@ This tokenizer code has gone through a long history:
     https://github.com/myleott/ark-twokenize-py
 
 
-I modified it to break hash+ into separate tokens '#1' -> ['#', '1'] and
-disabled a few of the protected regex since this version is meant to be used
-with data directly from twitter - meaning URLs and @mentions can be precisely
-isolated from the entities property.
 
+LR:
 Added twokenize2() to break up words with \' - convenient for non-english
-(e.g. italian).
+(e.g. italian) including the unicode apostrophe thing they typically use
+u2019.
+Tokenize3
 
 Luis Rei, luis.rei@ijs.si, July 2015
 """
@@ -43,7 +42,7 @@ punctSeq   = r"['\"“”‘’]+|[.?!,…]+|[:;]+"	#'anthem'. => ' anthem ' .
 entity     = r"&(?:amp|lt|gt|quot);"
 
 # don't it's a trap l'app - words separated by apostrophe
-ApWords = re.compile(r"(\w+)(')(\w+)", re.UNICODE)
+ApWords = re.compile(ur"(\w+)('|\u2019)(\w+)", re.UNICODE)
 
 # Abbreviations
 boundaryNotDot = regex_or("$", r"\s", r"[“\"?!,:;]", entity)
