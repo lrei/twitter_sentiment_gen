@@ -11,43 +11,66 @@ import random
 from progressbar import ProgressBar, Bar, Percentage
 
 
-def count_lines(infile):
+def naive_count_lines(infile):
     """ Count lines in a gzip JSON LD file """
-    n_lines = 0
-    with gzip.open(infile, 'r') as source:
-        for _ in source:
-            n_lines += 1
+    n = 0
 
-    return n_lines
+    with gzip.open(infile, 'r') as source:
+        for _, n in enumerate(source, 1):
+            pass
+
+    return n
+
+
+def buf_count_lines(filename):
+    """
+    Buffered count
+    """
+    f = gzip.open(filename, 'r')
+    lines = 0
+    buf_size = 1024 * 1024
+    read_f = f.read  # loop optimization
+
+    buf = read_f(buf_size)
+    while buf:
+        lines += buf.count('\n')
+        buf = read_f(buf_size)
+
+    return lines
 
 
 def select_nrandom(infile, outfile, n):
     """
     Selects random lines from a file
     """
+    count_lines = buf_count_lines
     n_lines = count_lines(infile)
-    selected_lines = random.sample(range(0, n_lines), n)
-    last_line = max(selected_lines)
+    selected_lines = sorted(random.sample(range(0, n_lines), n))
+    last_line = selected_lines[-1]
 
-    print("%s -> %s (%d [%d] -> %d)" % (infile, outfile, n_lines,
-                                        last_line, n))
+    print("%s -> %s (%d [last: %d] -> %d)" % (infile, outfile, n_lines,
+                                              last_line, n))
     pbar = ProgressBar(widgets=[Percentage(), Bar()], maxval=last_line).start()
     counter = 0
 
     with gzip.open(outfile, 'w') as destination:
         with gzip.open(infile, 'r') as source:
             for line in source:
+
                 # check if line is selected
-                if counter in selected_lines:
+                if counter == selected_lines[0]:
                     # "selected" line is written to file
                     destination.write(line)
+                    selected_lines = selected_lines[1:]
 
-                # update display
+                    # update display
+                    pbar.update(counter)
+
+                # update line counter
                 counter += 1
-                pbar.update(counter)
 
                 # check end condition
-                if counter > last_line:
+                if not selected_lines:
                     # all "selected" lines have been written
                     pbar.finish()
                     break
