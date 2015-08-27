@@ -61,6 +61,9 @@ def main():
                         action='store_true',
                         help='twokenizer that breaks apostroph words')
 
+    parser.add_argument('-n', '--num_jobs', action="store", 
+                        dest="num_jobs", type=int, default=0)
+
     args = parser.parse_args()
 
     tweet_files = args.tweet_infiles.split(',')
@@ -84,8 +87,9 @@ def main():
     func = partial(tokenize_tweet, tokenize_function)
 
     for source, dest in zip(tweet_files, dest_files):
-        multiprocess = MultiprocessFiles(source, dest, func, num_procs=0,
-                                         queue_size=200000)
+        multiprocess = MultiprocessFiles(source, dest, func, 
+                                         num_procs=args.num_jobs,
+                                         queue_size=2000)
         multiprocess.run()
 
 

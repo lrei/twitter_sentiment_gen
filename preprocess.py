@@ -165,13 +165,13 @@ def preprocess_tweet(min_tokens, max_num_urls, max_num_users, replacements,
     except:
         return None
 
-    # filter based on num of urls
-    if len(tweet['entities']['urls']) > max_num_urls:
-        return None
-
-    # filter based on num of user mentions
-    if len(tweet['entities']['user_mentions']) > max_num_users:
-        return None
+    if 'entities' in tweet:
+        # filter based on num of urls
+        if len(tweet['entities']['urls']) > max_num_urls:
+            return None
+        # filter based on num of user mentions
+        if len(tweet['entities']['user_mentions']) > max_num_users:
+            return None
 
     # replace entities
     tweet = replace_entities(tweet, replacements)
@@ -203,8 +203,9 @@ def main():
     parser.add_argument('output_files',
                         help='output file paths comma seperated')
     parser.add_argument('-t', '--min_tokens', type=int)
-    parser.add_argument('-url', '--max_urls', type=int)
+    parser.add_argument('-r', '--max_urls', type=int)
     parser.add_argument('-u', '--max_users', type=int)
+    parser.add_argument('-n', '--num_jobs', default=0, type=int)
     args = parser.parse_args()
 
     if args.min_tokens:
@@ -218,6 +219,7 @@ def main():
 
     infiles = args.input_files.split(',')
     outfiles = args.output_files.split(',')
+    num_jobs = args.num_jobs
 
     if not len(infiles) == len(outfiles):
         print('Input files and output_files do not match in size')
@@ -226,8 +228,8 @@ def main():
     func = partial(preprocess_tweet, min_tokens,
                    max_num_urls, max_num_users, replacements)
     for infile, outfile in zip(infiles, outfiles):
-        multiprocess = MultiprocessFiles(infile, outfile, func, num_procs=0,
-                                         queue_size=200000)
+        multiprocess = MultiprocessFiles(infile, outfile, func, 
+                                         num_procs=num_jobs, queue_size=2000)
         multiprocess.run()
 
 

@@ -74,6 +74,9 @@ def main():
     parser.add_argument('-p', '---langid_min_prob', type=float,
                         help='outputs only tweets that have langid_min_prob \
                               or higher probability')
+    parser.add_argument('-n', '--num_jobs', type=int, default=0,
+                        help='number of worker processes to use. Default: \
+                              number of cores')
     args = parser.parse_args()
 
     tweet_files = args.tweet_infiles.split(',')
@@ -96,8 +99,9 @@ def main():
     for source, dest, lang in zip(tweet_files, dest_files, lang_codes):
         func = partial(filter_classify_lang_line, lang, langid_min_prob,
                        replacements)
-        multiprocess = MultiprocessFiles(source, dest, func, num_procs=0,
-                                         queue_size=200000)
+        multiprocess = MultiprocessFiles(source, dest, func,
+                                         num_procs=args.num_jobs,
+                                         queue_size=2000)
         multiprocess.run()
 
 

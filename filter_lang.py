@@ -54,6 +54,8 @@ def filter_line(lang, tweet_line):
         ntweet['entities'] = tweet['entities']
     if 'id' in tweet:
         ntweet['id'] = tweet['id']
+    elif 'id_str' in tweet:
+        ntweet['id'] = int(tweet['id_str'])
     if 'created_at' in tweet:
         ntweet['created_at'] = tweet['created_at']
 
@@ -86,7 +88,7 @@ def main():
         func = partial(filter_line, lang_code)
         print('Using %s as language code' % lang_code)
         multiprocess = MultiprocessFiles(infile, outfile, func, num_procs=0,
-                                         queue_size=200000)
+                                         queue_size=3000)
         multiprocess.run()
 
 

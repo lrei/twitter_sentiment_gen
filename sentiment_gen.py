@@ -14,6 +14,12 @@ and collected news tweets also in LD-JSON format.
 4 - Create pos.lang.txt / neg.lang.txt / back.lang.txt:
     filter emoticons with a probability of keeping them in
 5 - Create neutal.lang.txt from news_tweets
+
+TODO:
+    1 - Fix order
+    2 - Fix Files
+    3 - Provide only source files and destination directory (don't remove files)
+    4 - Pass num_jobs and queue_size
 """
 
 from __future__ import print_function
@@ -24,8 +30,8 @@ from functools import partial
 
 from newsfeed_tweets import convert_tweets
 from filter_lang import filter_line
-from tweet_pp import preprocess_tweet
-from lowercase import lower_line
+from preprocess import preprocess_tweet
+from preprocess2 import preprocess2
 from classify_langid import filter_classify_lang_line
 from MultiprocessFiles import MultiprocessFiles
 import twokenize
@@ -43,18 +49,23 @@ def main():
     replacements = json.load(open('replacements.json'))
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('lang_codes', help='lang codes comma-seperated')
-    parser.add_argument('prob_smiley', type=float)
-    parser.add_argument('min_langid_prob', type=float)
+
+    # Basic
     parser.add_argument('tweets_file')
-    parser.add_argument('tweet_news_path')
     parser.add_argument('-p', '--news_feed_path')
+    parser.add_argument('lang_codes', help='lang codes comma-seperated')
+    
+    # Preprocessing Part I
+    parser.add_argument('tweet_news_path')
     parser.add_argument('-t', '--min_tokens', type=int)
     parser.add_argument('-url', '--max_urls', type=int)
     parser.add_argument('-u', '--max_users', type=int)
-    parser.add_argument('-l', '--lowercasing', dest='lowercasing',
-                        action='store_true')
+
+    # Language Identification
+    parser.add_argument('min_langid_prob', type=float)
     parser.add_argument('-prob', '--langid_min_prob')
+
+    # Tokenization
     parser.add_argument('-s', '--simple', dest='simple', action='store_true',
                         help='selects simple tokenizer instead of twokenizer')
     parser.add_argument('-to', '--twokenize', dest='twokenize',
@@ -63,6 +74,14 @@ def main():
     parser.add_argument('-tw', '--twokenize3', dest='twokenize3',
                         action='store_true',
                         help='twokenizer that breaks apostroph words')
+ 
+    # Preprocessing Part II
+    parser.add_argument('-l', '--lowercasing', dest='lowercasing',
+                        action='store_true')
+
+    # Sentiment Dataset Generation
+    parser.add_argument('prob_smiley', type=float)
+
     args = parser.parse_args()
 
     lang_codes = unicode(args.lang_codes).split(',')
@@ -112,38 +131,16 @@ def main():
                                                    queue_size=200000)
         multiprocess_filter_lang.run()
 
-        if lowercasing:
-            infile = outfile
-            outfile = 'tweets.lowercase.' + lang_code + '.json.gz'
-            outfile = os.path.join(tweets_path, outfile)
-            lower_case = MultiprocessFiles(infile, outfile, lower_line,
-                                          num_procs=0, queue_size=200000)
-            lower_case.run()
 
-            # Preprocess Text
-            input_file = outfile
-            output_file = 'tweets.' + lang_code + '.pp.json.gz'
-            output_file = os.path.join(tweets_path, output_file)
-
-            func = partial(preprocess_tweet, min_tokens,
-                           max_num_urls, max_num_users, replacements)
-            preprocess = MultiprocessFiles(input_file, output_file, func,
+        # Preprocess Text
+        input_file = outfile
+        output_file = 'tweets.' + lang_code + '.pp.json.gz'
+        output_file = os.path.join(tweets_path, output_file)
+        func = partial(preprocess_tweet, min_tokens,
+                       max_num_urls, max_num_users, replacements)
+        preprocess = MultiprocessFiles(input_file, output_file, func,
                                            num_procs=0, queue_size=200000)
-            preprocess.run()
-
-            # Delete lowercase file
-            os.remove(outfile)
-
-        else:
-            # Preprocess Text
-            input_file = outfile
-            output_file = 'tweets.' + lang_code + '.pp.json.gz'
-            output_file = os.path.join(tweets_path, output_file)
-            func = partial(preprocess_tweet, min_tokens,
-                           max_num_urls, max_num_users, replacements)
-            preprocess = MultiprocessFiles(input_file, output_file, func,
-                                           num_procs=0, queue_size=200000)
-            preprocess.run()
+        preprocess.run()
 
         tweet_file = output_file
         dest_file = 'tweets.' + lang_code + '.pp.lid.json.gz'
@@ -151,10 +148,22 @@ def main():
 
         func = partial(filter_classify_lang_line, lang_code, langid_min_prob,
                        replacements)
+
+        # Lang Identification
         classify = MultiprocessFiles(tweet_file, dest_file, func, num_procs=0,
                                      queue_size=200000)
         classify.run()
 
+        # Preprocess 2
+        infile = outfile
+        outfile = 'tweets.lowercase.' + lang_code + '.json.gz'
+        outfile = os.path.join(tweets_path, outfile)
+        pp2_line = partial(preprocess2, lowercase, remove_hash, replacements)
+        pp2 = MultiprocessFiles(infile, outfile, pp2,
+                                num_procs=0, queue_size=200000)
+        pp2.run()
+
+        # Tokenization
         source = dest_file
         dest = 'tweets.' + lang_code + '.pp.lid.tok.json.gz'
         dest = os.path.join(tweets_path, dest)

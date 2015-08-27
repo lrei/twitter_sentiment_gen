@@ -28,11 +28,13 @@ class MultiprocessFiles:
     """
 
     def __init__(self, infile, outfile, work_func, num_procs=0,
-                 queue_size=200000):
+                 queue_size=2000, verbose=False):
         if num_procs == 0:
             self.num_procs = multiprocessing.cpu_count()
         else:
             self.num_procs = num_procs
+        if verbose:
+            print('using %d procs' % (self.num_procs))
         self.queue_size = self.num_procs * queue_size
         self.workq = multiprocessing.Queue(self.queue_size)
         self.writeq = multiprocessing.Queue()
@@ -83,15 +85,15 @@ class MultiprocessFiles:
                             break
                 else:
                     destination.write(tweet)
+                    destination.flush()
                     counter += 1
-                    if counter % 2*self.queue_size == 0:
+                    if counter % (4 * self.queue_size) == 0:
                         end_time = time.time()
                         processed_per_second = (counter / (end_time -
                                                 start_time)) / 1000
-                        print('total processed lines = %dk' % (int(counter /
-                                                                   1000)))
-                        print('processed lines per second = %dk' %
-                              int(processed_per_second))
+                        print('total processed lines = %dk lines/s = %dk' 
+                               % (int(counter / 1000), 
+                                  int(processed_per_second)))
 
     def run(self):
         """ Runs reader, num_procs workers and writer. """

@@ -265,7 +265,7 @@ def tokenize(text):
 
 def tokenize2(text):
     """Breaks apostrophes:
-        l'intervista -> ["l", "'", "intervista"]
+        l'ammore -> ["l'", "ammore"]
         """
     tokens = simpleTokenize(squeezeWhitespace(text))
     ntoks = []
@@ -273,7 +273,10 @@ def tokenize2(text):
         if '\'' in tok:
             matching = ApWords.match(tok)
             if matching is not None:
-                ntoks.extend(list(matching.groups()))
+                tok_list = list(matching.groups())
+                p1 = tok_list[0] + tok_list[1]  # "l'"
+                ntoks.extend([p1])
+                ntoks.extend(tok_list[2:])  # "ammore"
         else:
             ntoks.extend([tok])
     return ntoks
@@ -288,5 +291,5 @@ def tokenize3(text):
     for tok in tokens:
         splitStr.extend(splitToken(tok))
     zippedStr = splitStr
-            
+
     return zippedStr
