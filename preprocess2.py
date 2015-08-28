@@ -56,7 +56,6 @@ def preprocess2(lowercase, break_hashtags, replacements, line):
     return tweet
 
 
-
 def main():
     """ main """
     parser = argparse.ArgumentParser()
@@ -69,7 +68,6 @@ def main():
 
     parser.add_argument('-l', '--lowercase', action="store_true", 
                         dest="lowercase", default=False)
- 
     
     parser.add_argument('input_tweet_file')
     parser.add_argument('output_file')
@@ -82,13 +80,13 @@ def main():
 
     replacements = json.load(open('replacements.json'))
 
-    if (not args.lowercase) and (not args.break_hashtags) and (not numbers):
+    if (not args.lowercase) and (not args.break_hashtags) and \
+            (not replacements['number']):
         print('Nothing to do')
         sys.exit(0)
 
     pp2 = partial(preprocess2, args.lowercase, args.break_hashtags, 
                   replacements)
-
 
     multiprocess = MultiprocessFiles(infile, outfile, pp2, 
                                      queue_size=2000, num_procs=num_procs)

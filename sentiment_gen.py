@@ -56,9 +56,8 @@ def main():
     parser.add_argument('lang_codes', help='lang codes comma-seperated')
     
     # Preprocessing Part I
-    parser.add_argument('tweet_news_path')
     parser.add_argument('-t', '--min_tokens', type=int)
-    parser.add_argument('-url', '--max_urls', type=int)
+    parser.add_argument('-r', '--max_urls', type=int)
     parser.add_argument('-u', '--max_users', type=int)
 
     # Language Identification
@@ -76,8 +75,10 @@ def main():
                         help='twokenizer that breaks apostroph words')
  
     # Preprocessing Part II
-    parser.add_argument('-l', '--lowercasing', dest='lowercasing',
+    parser.add_argument('-l', '--lowercase', dest='lowercase',
                         action='store_true')
+    parser.add_argument('-b', '--break_hash', dest='break_hash',
+                        action='store_true', default=False)
 
     # Sentiment Dataset Generation
     parser.add_argument('prob_smiley', type=float)
@@ -86,9 +87,7 @@ def main():
 
     lang_codes = unicode(args.lang_codes).split(',')
     prob_smiley = args.prob_smiley
-    min_langid_prob = args.min_langid_prob
     tweets_file = args.tweets_file
-    news_tweets_path = args.tweet_news_path
     if args.news_feed_path:
         newsfeed_path = args.news_feed_path
     if args.min_tokens:
@@ -97,7 +96,6 @@ def main():
         max_num_urls = args.max_urls
     if args.max_users:
         max_num_users = args.max_users
-    lowercasing = args.lowercasing
     if args.langid_min_prob:
         langid_min_prob = args.langid_min_prob
     tokenize_function = twokenize.tokenize2
@@ -107,10 +105,6 @@ def main():
         tokenize_function = twokenize.tokenize
     if args.twokenize3:
         tokenize_function = twokenize.tokenize3
-    # create tmpdir
-    # tmpdir = './tmp'
-    # if not os.path.isdir(tmpdir):
-    #    os.makedirs(tmpdir)
 
     filename = os.path.basename(tweets_file)
     tweets_path = os.path.dirname(tweets_file)
@@ -123,23 +117,29 @@ def main():
     # Filter Based on Language
     for lang_code in lang_codes:
         print('Using %s as language code' % lang_code)
+        # new dir
+        tmpdir = os.path.join(tweets_path, 'generated_tweets_' + str(lang_code))
+        if not os.path.isdir(tmpdir):
+            os.makedirs(tmpdir)
+        tweets_path = tmpdir
+
         func = partial(filter_line, lang_code)
         outfile = 'tweets.' + lang_code + '.json.gz'
         outfile = os.path.join(tweets_path, outfile)
         multiprocess_filter_lang = MultiprocessFiles(tweets_file, outfile, func,
-                                                   num_procs=0,
-                                                   queue_size=200000)
+                                                     num_procs=0,
+                                                     queue_size=200000)
         multiprocess_filter_lang.run()
 
-
         # Preprocess Text
+        print('preprocess 1')
         input_file = outfile
         output_file = 'tweets.' + lang_code + '.pp.json.gz'
         output_file = os.path.join(tweets_path, output_file)
         func = partial(preprocess_tweet, min_tokens,
                        max_num_urls, max_num_users, replacements)
         preprocess = MultiprocessFiles(input_file, output_file, func,
-                                           num_procs=0, queue_size=200000)
+                                       num_procs=0, queue_size=200000)
         preprocess.run()
 
         tweet_file = output_file
@@ -150,21 +150,29 @@ def main():
                        replacements)
 
         # Lang Identification
+        print('classify')
         classify = MultiprocessFiles(tweet_file, dest_file, func, num_procs=0,
                                      queue_size=200000)
         classify.run()
 
         # Preprocess 2
-        infile = outfile
-        outfile = 'tweets.lowercase.' + lang_code + '.json.gz'
-        outfile = os.path.join(tweets_path, outfile)
-        pp2_line = partial(preprocess2, lowercase, remove_hash, replacements)
-        pp2 = MultiprocessFiles(infile, outfile, pp2,
-                                num_procs=0, queue_size=200000)
-        pp2.run()
+        if args.lowercase or args.break_hash or replacements['number']:
+            print('preprocess2')
+            infile = dest_file
+            outfile = 'tweets.lowercase.' + lang_code + '.json.gz'
+            outfile = os.path.join(tweets_path, outfile)
+            pp2_func = partial(preprocess2, args.lowercase, args.break_hash,
+                               replacements)
+            pp2 = MultiprocessFiles(infile, outfile, pp2_func,
+                                    num_procs=0, queue_size=200000)
+            pp2.run()
 
         # Tokenization
-        source = dest_file
+        print('tokenization')
+        if args.lowercase or args.break_hash or replacements['number']:
+            source = outfile
+        else:
+            source = dest_file
         dest = 'tweets.' + lang_code + '.pp.lid.tok.json.gz'
         dest = os.path.join(tweets_path, dest)
 
@@ -172,7 +180,8 @@ def main():
         tokenizer = MultiprocessFiles(source, dest, func, num_procs=0,
                                       queue_size=200000)
         tokenizer.run()
-    # @todo remove tmpdir
+
+    # @todo remove tmpdir and result should be outside tmpdir
 
 if __name__ == '__main__':
     main()

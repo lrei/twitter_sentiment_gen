@@ -176,6 +176,7 @@ def preprocess_tweet(min_tokens, max_num_urls, max_num_users, replacements,
     # replace entities
     tweet = replace_entities(tweet, replacements)
     if tweet is None:
+        # print('tweet je none')
         return None
 
     # filter based on num of tokens
