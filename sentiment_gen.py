@@ -132,7 +132,6 @@ def main():
         multiprocess_filter_lang.run()
 
         # Preprocess Text
-        print('preprocess 1')
         input_file = outfile
         output_file = 'tweets.' + lang_code + '.pp.json.gz'
         output_file = os.path.join(tweets_path, output_file)
@@ -150,14 +149,12 @@ def main():
                        replacements)
 
         # Lang Identification
-        print('classify')
         classify = MultiprocessFiles(tweet_file, dest_file, func, num_procs=0,
                                      queue_size=200000)
         classify.run()
 
         # Preprocess 2
         if args.lowercase or args.break_hash or replacements['number']:
-            print('preprocess2')
             infile = dest_file
             outfile = 'tweets.lowercase.' + lang_code + '.json.gz'
             outfile = os.path.join(tweets_path, outfile)
@@ -168,7 +165,6 @@ def main():
             pp2.run()
 
         # Tokenization
-        print('tokenization')
         if args.lowercase or args.break_hash or replacements['number']:
             source = outfile
         else:
