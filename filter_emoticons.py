@@ -8,8 +8,9 @@ Reads from a file and outputs to files:
     neg.txt     - lines that contain negative smileys (with smiley removed)
     other.txt   - the remaining tweets
 
-    lower-cases output.
-    removes short tweets
+TODO:
+    - Discard all tweets with emoticons not on the positive or negative lists
+    - Should probably make hears and kisses (except broken heart) positive
 '''
 
 from __future__ import print_function
@@ -29,11 +30,44 @@ from functools import partial
 pos_smileys = [u':)', u':D', u':-)', u':-))', u':]', u'=)', u'(:', u':o)']
 neg_smileys = [u':(', u';(', u':-(', u':-[', u":'(", u":[", u":{", u">:("]
 
-# add unicode emoticons
+#
+# add positive unicode emoticons
+#
 pos_smileys += [unichr(x) 
                 for x in range(int('1F600', 16), int('1F600', 16) + 16)]
-neg_smileys += [unichr(x) 
-                for x in range(int('1F620', 16), int('1F620', 16) + 16)]
+pos_smileys += [unichr(int(x, 16)) for x in 
+                ['1F61A', '263A', '263A', '1F642', '1F917', '1F60C', '270C',
+                 '1F44D']]
+# positive cat faces
+pos_smileys += [unichr(x) for x in 
+                range(int('1F638', 16), int('1F63D', 16) + 1)]
+
+#
+# add negative unicode emoticons
+#
+# exclude a few that are not unanbigously negative
+# is weary face ('1F629') negative? if not add here: 
+not_neg = [unichr(int(x, 16)) for x in ['1F62B', '1F62A', '1F624']]
+
+possibly_neg = [unichr(x) for x in 
+                range(int('1F620', 16), int('1F620', 16) + 14)]
+
+unambigously_neg =[x for x in possibly_neg if x not in not_neg] 
+
+neg_smileys +=  unambigously_neg
+neg_smileys += [unichr(int(x, 16)) for x in
+                ['1F610', '1F611', '2639', '16F41', '1F612', '1F61E', '1F64D',
+                 '1F64E']]
+# negative cat faces
+neg_smileys += [unichr(int(x, 16)) for x in ['1F63E', '1F63F', '1F640']]
+
+#
+# Ambigous / unknown
+#
+all_emoticons = [unichr(x) for x in range(int('1F620', 16), int('1F535', 16))] 
+unambigous = neg_smileys + pos_smileys
+ambigous = [x for x in all_emoticons if x not in unambigous]
+
 
 POS = True
 NEG = False
@@ -52,6 +86,7 @@ def process_line(prob_smiley, json_line):
 
     tokens = unicode_line.split()
 
+    # handle well tokenized text
     has_pos = False
     has_neg = False
 
@@ -64,6 +99,9 @@ def process_line(prob_smiley, json_line):
         if sm in tokens:
             has_neg = True
             break
+
+    # @todo handle poorly tokenized text
+
 
     if not has_neg and not has_pos:
         return (None, unicode_line)  # No smileys
