@@ -31,7 +31,7 @@ pos_smileys = [u':)', u':D', u':-)', u':-))', u':]', u'=)', u'(:', u':o)']
 neg_smileys = [u':(', u';(', u':-(', u':-[', u":'(", u":[", u":{", u">:("]
 
 #
-# add positive unicode emoticons
+# add positive unicode emoji
 #
 pos_smileys += [unichr(x) 
                 for x in range(int('1F600', 16), int('1F600', 16) + 16)]
@@ -43,7 +43,7 @@ pos_smileys += [unichr(x) for x in
                 range(int('1F638', 16), int('1F63D', 16) + 1)]
 
 #
-# add negative unicode emoticons
+# add negative unicode emoji
 #
 # exclude a few that are not unanbigously negative
 # is weary face ('1F629') negative? if not add here: 
@@ -52,7 +52,7 @@ not_neg = [unichr(int(x, 16)) for x in ['1F62B', '1F62A', '1F624']]
 possibly_neg = [unichr(x) for x in 
                 range(int('1F620', 16), int('1F620', 16) + 14)]
 
-unambigously_neg =[x for x in possibly_neg if x not in not_neg] 
+unambigously_neg = [x for x in possibly_neg if x not in not_neg] 
 
 neg_smileys +=  unambigously_neg
 neg_smileys += [unichr(int(x, 16)) for x in
@@ -63,10 +63,10 @@ neg_smileys += [unichr(int(x, 16)) for x in ['1F63E', '1F63F', '1F640']]
 
 #
 # Ambigous / unknown
-#
-all_emoticons = [unichr(x) for x in range(int('1F620', 16), int('1F535', 16))] 
+# actually not all emoji but most anyways:
+all_emoji = [unichr(x) for x in range(int('1F600', 16), int('1F64F', 16))] 
 unambigous = neg_smileys + pos_smileys
-ambigous = [x for x in all_emoticons if x not in unambigous]
+ambigous = [x for x in all_emoji if x not in unambigous]
 
 
 POS = True
@@ -99,9 +99,6 @@ def process_line(prob_smiley, json_line):
         if sm in tokens:
             has_neg = True
             break
-
-    # @todo handle poorly tokenized text
-
 
     if not has_neg and not has_pos:
         return (None, unicode_line)  # No smileys
