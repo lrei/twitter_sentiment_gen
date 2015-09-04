@@ -153,6 +153,8 @@ def replace_entities(tweet, replacements):
               u'id': tweet['id']}
     if 'created_at' in tweet:
         ntweet['created_at'] = tweet['created_at']
+    if 'retweet_id' in tweet:
+        ntweet['retweet_id'] = tweet['retweet_id']
 
     return ntweet
 
@@ -206,7 +208,10 @@ def main():
     parser.add_argument('-t', '--min_tokens', type=int)
     parser.add_argument('-r', '--max_urls', type=int)
     parser.add_argument('-u', '--max_users', type=int)
-    parser.add_argument('-n', '--num_jobs', default=0, type=int)
+    parser.add_argument('-n', '--num_jobs', type=int, default=0,
+                        help='number of worker processes to use. Default: \
+                              number of cores')
+    parser.add_argument('-s', '--queue_size', type=int, default=2000)
     args = parser.parse_args()
 
     if args.min_tokens:
@@ -220,7 +225,6 @@ def main():
 
     infiles = args.input_files.split(',')
     outfiles = args.output_files.split(',')
-    num_jobs = args.num_jobs
 
     if not len(infiles) == len(outfiles):
         print('Input files and output_files do not match in size')
@@ -230,7 +234,8 @@ def main():
                    max_num_urls, max_num_users, replacements)
     for infile, outfile in zip(infiles, outfiles):
         multiprocess = MultiprocessFiles(infile, outfile, func, 
-                                         num_procs=num_jobs, queue_size=2000)
+                                         num_procs=args.num_jobs,
+                                         queue_size=args.queue_size)
         multiprocess.run()
 
 
