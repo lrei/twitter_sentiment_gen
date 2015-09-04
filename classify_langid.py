@@ -77,6 +77,7 @@ def main():
     parser.add_argument('-n', '--num_jobs', type=int, default=0,
                         help='number of worker processes to use. Default: \
                               number of cores')
+    parser.add_argument('-s', '--queue_size', type=int, default=2000)
     args = parser.parse_args()
 
     tweet_files = args.tweet_infiles.split(',')
@@ -101,7 +102,7 @@ def main():
                        replacements)
         multiprocess = MultiprocessFiles(source, dest, func,
                                          num_procs=args.num_jobs,
-                                         queue_size=2000)
+                                         queue_size=args.queue_size)
         multiprocess.run()
 
 

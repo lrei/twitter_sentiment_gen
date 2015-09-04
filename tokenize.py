@@ -61,8 +61,10 @@ def main():
                         action='store_true',
                         help='twokenizer that breaks apostroph words')
 
-    parser.add_argument('-n', '--num_jobs', action="store", 
-                        dest="num_jobs", type=int, default=0)
+    parser.add_argument('-n', '--num_jobs', type=int, default=0,
+                        help='number of worker processes to use. Default: \
+                              number of cores')
+    parser.add_argument('-q', '--queue_size', type=int, default=2000)
 
     args = parser.parse_args()
 
@@ -89,7 +91,7 @@ def main():
     for source, dest in zip(tweet_files, dest_files):
         multiprocess = MultiprocessFiles(source, dest, func, 
                                          num_procs=args.num_jobs,
-                                         queue_size=2000)
+                                         queue_size=args.queue_size)
         multiprocess.run()
 
 

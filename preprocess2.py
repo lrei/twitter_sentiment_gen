@@ -60,8 +60,10 @@ def main():
     """ main """
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-n', '--num_jobs', action="store", 
-                        dest="num_procs", type=int, default=0)
+    parser.add_argument('-n', '--num_jobs', type=int, default=0,
+                        help='number of worker processes to use. Default: \
+                              number of cores')
+    parser.add_argument('-s', '--queue_size', type=int, default=2000)
 
     parser.add_argument('-b', '--break_hashtags', action="store_true", 
                         dest="break_hashtags", default=False)
@@ -76,8 +78,6 @@ def main():
     infile = args.input_tweet_file
     outfile = args.output_file
 
-    num_procs = args.num_procs
-
     replacements = json.load(open('replacements.json'))
 
     if (not args.lowercase) and (not args.break_hashtags) and \
@@ -89,7 +89,8 @@ def main():
                   replacements)
 
     multiprocess = MultiprocessFiles(infile, outfile, pp2, 
-                                     queue_size=2000, num_procs=num_procs)
+                                     queue_size=args.queue_size,
+                                     num_procs=args.num_jobs)
     multiprocess.run()
 
 
