@@ -58,6 +58,10 @@ def filter_line(lang, tweet_line):
         ntweet['id'] = int(tweet['id_str'])
     if 'created_at' in tweet:
         ntweet['created_at'] = tweet['created_at']
+    if 'retweeted_status' in tweet:
+        ntweet['retweet_id'] = tweet['retweeted_status']['id_str']
+    if 'retweet_id' in tweet:
+        ntweet['retweet_id'] = tweet['retweet_id']
 
     return ntweet
 
@@ -72,6 +76,10 @@ def main():
                         help='one or more file paths comma_seperated')
     parser.add_argument('-l', '--lang_codes',
                         help='language codes comma-seperated')
+    parser.add_argument('-n', '--num_jobs', type=int, default=0,
+                        help='number of worker processes to use. Default: \
+                              number of cores')
+    parser.add_argument('-s', '--queue_size', type=int, default=3000)
     args = parser.parse_args()
 
     infile = args.input_tweet_file
@@ -87,8 +95,9 @@ def main():
     for lang_code, outfile in zip(lang_codes, outfiles):
         func = partial(filter_line, lang_code)
         print('Using %s as language code' % lang_code)
-        multiprocess = MultiprocessFiles(infile, outfile, func, num_procs=0,
-                                         queue_size=3000)
+        multiprocess = MultiprocessFiles(infile, outfile, func,
+                                         num_procs=args.num_jobs,
+                                         queue_size=args.queue_size)
         multiprocess.run()
 
 
