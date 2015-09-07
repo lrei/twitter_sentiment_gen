@@ -59,9 +59,9 @@ def filter_line(lang, tweet_line):
     if 'created_at' in tweet:
         ntweet['created_at'] = tweet['created_at']
     if 'retweeted_status' in tweet:
-        ntweet['retweet_id'] = tweet['retweeted_status']['id_str']
+        ntweet['retweet_id'] = int(tweet['retweeted_status']['id_str'])
     if 'retweet_id' in tweet:
-        ntweet['retweet_id'] = tweet['retweet_id']
+        ntweet['retweet_id'] = int(tweet['retweet_id'])
 
     return ntweet
 
