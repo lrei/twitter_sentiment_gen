@@ -42,13 +42,24 @@ def load_tweets(file_path, open_function=open, dest_path=None):
                       for x in tweets if u'raw_json' in x]
 
             # check properties
-            tweets = [x for x in tweets if u'lang' in x and u'text' in x]
+            tweets = [x for x in tweets if u'lang' in x and u'text' in x and
+                      u'retweeted_status' not in x]
+            rtweets = [x for x in tweets if u'lang' in x and u'text' in x and
+                      u'retweeted_status' in x]
 
             # remove other properties for the sake of disk space
             tweets = [{u'text': t['text'], u'lang': t['lang'],
                        u'created_at': t['created_at'],
                        u'entities': t['entities'], u'id': t['id_str']}
                       for t in tweets]
+
+            rtweets = [{u'text': t['text'], u'lang': t['lang'],
+                        u'created_at': t['created_at'],
+                        u'entities': t['entities'], u'id': t['id_str'],
+                        u'retweet_id': t['retweeted_status'['id_str']]}
+                       for t in rtweets]
+
+            tweets += rtweets
 
             # remove newlines, strip from text
             for tweet in tweets:
