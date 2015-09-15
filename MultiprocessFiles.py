@@ -45,9 +45,12 @@ class MultiprocessFiles:
     def reader(self):
         """ Reads from file and adds JSON objects to multiprocessing queue. """
         with gzip.open(self.infile, 'r') as source:
-            for line in source.readlines():
-                # add to queue
-                self.workq.put(line)
+            try:
+                for line in source:
+                    # add to queue
+                    self.workq.put(line)
+            except IOError as e:
+                print(str(e))
 
         for _ in range(self.num_procs):
             self.workq.put(-1)
