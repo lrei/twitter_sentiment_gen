@@ -14,12 +14,13 @@ from functools import partial
 from MultiprocessFiles import MultiprocessFiles
 import twokenize
 
-re_tok = re.compile(r'\w+|[^\w\s]+', re.UNICODE)
+re_tok = re.compile(r'(\w+|[^\w\s]+)', re.UNICODE)
 
 
 def word_tokenize(text):
     """ Simple tokenization function: breaks text on regex word boundaries """
-    return u' '.join(re_tok.findall(text))
+    t = u' '.join(re_tok.split(text))
+    return t.split()
 
 
 def tokenize_tweet(tokenize, tweet):
@@ -78,13 +79,13 @@ def main():
     tokenize_function = twokenize.tokenize2
     if args.simple:
         tokenize_function = word_tokenize
-        print("Simple Tokenizer")
+        print("Simple Tokenize")
     if args.twokenize:
         tokenize_function = twokenize.tokenize
-        print("Twokenize")
+        print("Tokenize")
     if args.twokenize2:
         tokenize_function = twokenize.tokenize2
-        print("Twokenize 2")
+        print("Tokenize 2")
 
     func = partial(tokenize_tweet, tokenize_function)
 
