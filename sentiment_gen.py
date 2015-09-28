@@ -54,8 +54,8 @@ def main():
     parser.add_argument('tweets_file')
     parser.add_argument('-p', '--news_feed_path', default=None)
     parser.add_argument('lang_codes', help='lang codes comma-seperated')
-    parser.add_argument('-j', '--num_jobs', default=0, help='0 uses all cores '
-                                                            'available')
+    parser.add_argument('-j', '--num_jobs', default=0, type=int,
+                        help='0 uses all cores available')
     parser.add_argument('-q', '--queue_size', type=int, default=2000)
     parser.add_argument('output_dir')
 
