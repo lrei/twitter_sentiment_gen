@@ -12,6 +12,7 @@ def main():
     parser.add_argument('neg_file', help='txt file with negative tweets')
     parser.add_argument('neu_file', help='.json.gz file with neutral tweets')
     parser.add_argument('pos_file', help='txt file with positive tweets')
+    parser.add_argument('output_file')
     args = parser.parse_args()
 
     train_file = codecs.open(args.output_file, 'w', encoding='utf-8')
@@ -19,7 +20,7 @@ def main():
     with open(args.neg_file, 'r') as source:
         for line in source:
             train_file.write(line.decode(encoding='utf-8').strip() + u'\t' +
-                             u'NEG' + u'\n')
+                             u'NEGATIVE' + u'\n')
 
     with gzip.open(args.neu_file, 'r') as source:
         for line in source:
@@ -28,12 +29,12 @@ def main():
             except:
                 continue
 
-            train_file.write(tweet['text'].strip() + u'\t' + u'NEU' + u'\n')
+            train_file.write(tweet['text'].strip() + u'\t' + u'NEUTRAL' + u'\n')
 
     with open(args.pos_file, 'r') as source:
         for line in source:
             train_file.write(line.decode(encoding='utf-8').strip() + u'\t' +
-                             u'POS' + u'\n')
+                             u'POSITIVE' + u'\n')
     train_file.close()
 
 
